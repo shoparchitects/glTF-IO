@@ -67,15 +67,24 @@ namespace glTF_BinImporter
 
     private string GetUnpackedTexturePath()
     {
-      string root = Rhino.Render.Utilities.GetUnpackedFilesCacheFolder(doc, true);
-      string full = Path.Combine(root, filenameNoExtension);
+        string root;
 
-      if(!Directory.Exists(full))
-      {
-        Directory.CreateDirectory(full);
-      }
+#if NET48
+        root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "McNeel\\Rhinoceros\\7.0", "UnpackedTextures");
+#else
+        root = Rhino.Render.Utilities.GetUnpackedFilesCacheFolder(doc, true);
 
-      return full;
+#endif
+            //    <PackageReference Condition=" '$(RhinoVersion)'=='8' " Include="RhinoCommon" Version="8.15.25019.13001" IncludeAssets="compile;build" />
+
+        string full = Path.Combine(root, filenameNoExtension);
+
+        if(!Directory.Exists(full))
+        {
+            Directory.CreateDirectory(full);
+        }
+
+        return full;
     }
 
     public Rhino.Render.RenderTexture GetRenderTextureFromBitmap(System.Drawing.Bitmap bmp, string name)
