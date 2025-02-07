@@ -85,6 +85,9 @@ namespace glTF_BinExporter
 
         public static bool DoExport(string fileName, glTFExportOptions options, bool binary, RhinoDoc doc, IEnumerable<Rhino.DocObjects.RhinoObject> rhinoObjects, Rhino.Render.LinearWorkflow workflow)
         {
+            // Make a list of all documents
+            rhinoObjects = rhinoObjects.ToList();
+
             RhinoDocGltfConverter converter = new RhinoDocGltfConverter(options, binary, doc, rhinoObjects, workflow);
             glTFLoader.Schema.Gltf gltf = converter.ConvertToGltf();
 
