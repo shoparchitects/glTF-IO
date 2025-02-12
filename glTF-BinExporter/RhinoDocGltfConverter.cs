@@ -350,6 +350,11 @@ namespace glTF_BinExporter
       return rhinoObject.Name;
     }
 
+    /// <summary>
+    /// This is to address blocks
+    /// </summary>
+    /// <param name="rhinoObjects"></param>
+    /// <returns></returns>
     public List<ObjectExportData> SanitizeRhinoObjects(IEnumerable<Rhino.DocObjects.RhinoObject> rhinoObjects)
     {
       List<ObjectExportData> explodedObjects = new List<ObjectExportData>();
