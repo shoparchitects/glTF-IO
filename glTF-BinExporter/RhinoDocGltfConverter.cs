@@ -4,8 +4,10 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+using glTFLoader.Schema;
 using Rhino;
 using Rhino.DocObjects;
+using Rhino.Geometry;
 
 namespace glTF_BinExporter
 {
@@ -138,7 +140,15 @@ namespace glTF_BinExporter
                 //thl @ SHoP - We have to link the mesh node back to the block node
                 var blockNodeIndex = ExportData2BlockDefNodeIndex[exportData];
                 var blockNode = dummy.Nodes[blockNodeIndex];
-                blockNode.Children = new int[] { nodeIndex };
+
+                if (blockNode.Children == null)
+                {
+                    blockNode.Children = new int[1] { nodeIndex };
+                }
+                else
+                {
+                    blockNode.Children = blockNode.Children.Append(nodeIndex).ToArray();
+                }
 
             }
 
@@ -399,18 +409,33 @@ namespace glTF_BinExporter
 
                     int nodeIndex_BlockDefinition;
                     //2. if not, then we create block def node
+                    
                     if (!hasDefNode)
                     {
-                        glTFLoader.Schema.Node nodeBlockDef = new glTFLoader.Schema.Node()
-                        {
-                            Name = instanceObject.InstanceDefinition.Name,
-
-                        };
+                        Node nodeBlockDef = createBlockNode(instanceObject.InstanceDefinition.Name, Transform.Identity);
+                        
                         nodeIndex_BlockDefinition = dummy.Nodes.AddAndReturnIndex(nodeBlockDef);
 
                         AddBlockNode(nodeIndex_BlockDefinition);
 
                         BlockDef2NodeIndex.Add(instanceObject.InstanceDefinition, nodeIndex_BlockDefinition);
+
+                        List<int> children = createBlockNodesRecursive(instanceObject, instanceObject.InstanceXform, processedObjects);
+
+                        if (children != null && children.Count > 0)
+                        {
+                            if (nodeBlockDef.Children == null)
+                            {
+                                nodeBlockDef.Children = nodeBlockDef.Children = children.ToArray();
+                            }
+                            else
+                            {
+                                var tempList = new List<int>(nodeBlockDef.Children);
+                                tempList.AddRange(children);
+                                nodeBlockDef.Children = tempList.ToArray();
+                            }
+
+                        }
                     }
                     else
                     {
@@ -418,22 +443,10 @@ namespace glTF_BinExporter
                     }
                     
 
-                    List<int> children = createBlockNodesRecursive(instanceObject, instanceObject.InstanceXform, processedObjects);
-                    var blockDefNode = dummy.Nodes[nodeIndex_BlockDefinition];
-
-                    if (children != null && children.Count > 0)
-                        blockDefNode.Children = children.ToArray();
-
 
                     //3. then create instance node to point to the block def
-                    
+                    Node nodeBlockInstance = createBlockNode(getBlockInstanceName(instanceObject), instanceObject.InstanceXform, nodeIndex_BlockDefinition);
 
-                    glTFLoader.Schema.Node nodeBlockInstance = new glTFLoader.Schema.Node()
-                    {
-                        Name = getBlockInstanceName(instanceObject),
-                        Children = new int[] { nodeIndex_BlockDefinition },
-
-                    };
 
                     var nodeIndex_BlockInstance = dummy.Nodes.AddAndReturnIndex(nodeBlockInstance);
                     AddBlockNode(nodeIndex_BlockInstance, rhinoObject);
@@ -585,15 +598,17 @@ namespace glTF_BinExporter
                     //2. if not, then we create block def node
                     if (!hasDefNode)
                     {
-                        glTFLoader.Schema.Node nodeBlockDef = new glTFLoader.Schema.Node()
-                        {
-                            Name = nestedObject.InstanceDefinition.Name,
+                        Node nodeBlockDef = createBlockNode(nestedObject.InstanceDefinition.Name, Transform.Identity);
 
-                        };
                         nodeIndex_BlockDefinition = dummy.Nodes.AddAndReturnIndex(nodeBlockDef);
 
                         AddBlockNode(nodeIndex_BlockDefinition);
                         BlockDef2NodeIndex.Add(nestedObject.InstanceDefinition, nodeIndex_BlockDefinition);
+
+                        List<int> children = createBlockNodesRecursive(nestedObject, nestedTransform, processedObjects);
+
+                        if (children != null && children.Count > 0)
+                            nodeBlockDef.Children = children.ToArray();
                     }
                     else
                     {
@@ -601,20 +616,11 @@ namespace glTF_BinExporter
                     }
 
 
-                    List<int> children = createBlockNodesRecursive(nestedObject, nestedTransform, processedObjects);
-                    var blockDefNode = dummy.Nodes[nodeIndex_BlockDefinition];
-
-                    if (children != null && children.Count > 0)
-                        blockDefNode.Children = children.ToArray();
+                    
 
 
                     //3. then create instance node to point to the block def
-                    glTFLoader.Schema.Node nodeBlockInstance = new glTFLoader.Schema.Node()
-                    {
-                        Name = getBlockInstanceName(nestedObject),
-                        Children = new int[] { nodeIndex_BlockDefinition },
-
-                    };
+                    Node nodeBlockInstance = createBlockNode(getBlockInstanceName(nestedObject), nestedTransform, nodeIndex_BlockDefinition);
 
                     var nodeIndex_BlockInstance = dummy.Nodes.AddAndReturnIndex(nodeBlockInstance);
                     AddBlockNode(nodeIndex_BlockInstance);
@@ -658,6 +664,28 @@ namespace glTF_BinExporter
                 return $"{instanceObj.InstanceDefinition.Name}_Unit{BlockDefToCount[instanceObj.InstanceDefinition]}";
             }
             return name;
+        }
+
+        Node createBlockNode(string name, Transform trans, int child = -1)
+        {
+            Vector3d translation, diag;
+            Transform rotation, orth;
+            Quaternion quaternion;
+
+            trans.DecomposeAffine(out translation, out rotation, out orth, out diag);
+            rotation.GetQuaternion(out quaternion);
+
+            Node node = new glTFLoader.Schema.Node()
+            {
+                Name = name,
+                /*Translation = new float[3] { (float)translation.X, (float)translation.Y, (float)translation.Z },
+                Rotation = new float[4] { (float)quaternion.B, (float)quaternion.C, (float)quaternion.D, (float)quaternion.A }*/
+            };
+
+            if(child >= 0)
+                node.Children = new int[] { child };
+
+            return node;
         }
 
         //Dictionary keeping track of sanitized object to block definition: Sanitized object => Instance Definition
