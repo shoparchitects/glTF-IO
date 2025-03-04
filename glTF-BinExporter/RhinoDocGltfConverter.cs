@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 using glTFLoader.Schema;
+using Newtonsoft.Json;
 using Rhino;
 using Rhino.DocObjects;
 using Rhino.Geometry;
@@ -120,12 +121,28 @@ namespace glTF_BinExporter
 
             var sanitized = SanitizeRhinoObjects(objects);
 
+            // thl @ SHoP - adding this to keep track of repeating meshes
+            Dictionary<Guid, int> geo2meshIndex = new Dictionary<Guid, int>();
+
             foreach (ObjectExportData exportData in sanitized)
             {
                 int? materialIndex = GetMaterial(exportData.RenderMaterial, exportData.Object);
 
-                RhinoMeshGltfConverter meshConverter = new RhinoMeshGltfConverter(exportData, materialIndex, options, binary, dummy, binaryBuffer);
-                int meshIndex = meshConverter.AddMesh();
+                var ogGeometry = exportData.Object;
+
+                int meshIndex;
+                if (geo2meshIndex.ContainsKey(ogGeometry.Id))
+                {
+                    meshIndex = geo2meshIndex[ogGeometry.Id];
+                }
+                else
+                {
+
+                    RhinoMeshGltfConverter meshConverter = new RhinoMeshGltfConverter(exportData, materialIndex, options, binary, dummy, binaryBuffer);
+                    meshIndex = meshConverter.AddMesh();
+
+                    geo2meshIndex.Add(ogGeometry.Id, meshIndex);
+                }
 
                 glTFLoader.Schema.Node node = new glTFLoader.Schema.Node()
                 {
@@ -138,18 +155,20 @@ namespace glTF_BinExporter
                 AddNode(nodeIndex, exportData.Object);
 
                 //thl @ SHoP - We have to link the mesh node back to the block node
-                var blockNodeIndex = ExportData2BlockDefNodeIndex[exportData];
-                var blockNode = dummy.Nodes[blockNodeIndex];
-
-                if (blockNode.Children == null)
+                if (ExportData2BlockInstanceNodeIndex.ContainsKey(exportData))
                 {
-                    blockNode.Children = new int[1] { nodeIndex };
-                }
-                else
-                {
-                    blockNode.Children = blockNode.Children.Append(nodeIndex).ToArray();
-                }
+                    var blockNodeIndex = ExportData2BlockInstanceNodeIndex[exportData];
+                    var blockNode = dummy.Nodes[blockNodeIndex];
 
+                    if (blockNode.Children == null)
+                    {
+                        blockNode.Children = new int[1] { nodeIndex };
+                    }
+                    else
+                    {
+                        blockNode.Children = blockNode.Children.Append(nodeIndex).ToArray();
+                    }
+                }
             }
 
             if (binary && binaryBuffer.Count > 0)
@@ -404,62 +423,51 @@ namespace glTF_BinExporter
                 //if it's a block instance
                 if (rhinoObject.ObjectType == Rhino.DocObjects.ObjectType.InstanceReference && rhinoObject is Rhino.DocObjects.InstanceObject instanceObject)
                 {
-                    //1. check if block definition already exists
-                    bool hasDefNode = BlockDef2NodeIndex.ContainsKey(instanceObject.InstanceDefinition);
-
-                    int nodeIndex_BlockDefinition;
-                    //2. if not, then we create block def node
-                    
-                    if (!hasDefNode)
-                    {
-                        Node nodeBlockDef = createBlockNode(instanceObject.InstanceDefinition.Name, Transform.Identity);
-                        
-                        nodeIndex_BlockDefinition = dummy.Nodes.AddAndReturnIndex(nodeBlockDef);
-
-                        AddBlockNode(nodeIndex_BlockDefinition);
-
-                        BlockDef2NodeIndex.Add(instanceObject.InstanceDefinition, nodeIndex_BlockDefinition);
-
-                        List<int> children = createBlockNodesRecursive(instanceObject, instanceObject.InstanceXform, processedObjects);
-
-                        if (children != null && children.Count > 0)
-                        {
-                            if (nodeBlockDef.Children == null)
-                            {
-                                nodeBlockDef.Children = nodeBlockDef.Children = children.ToArray();
-                            }
-                            else
-                            {
-                                var tempList = new List<int>(nodeBlockDef.Children);
-                                tempList.AddRange(children);
-                                nodeBlockDef.Children = tempList.ToArray();
-                            }
-
-                        }
-                    }
-                    else
-                    {
-                        nodeIndex_BlockDefinition = BlockDef2NodeIndex[instanceObject.InstanceDefinition];
-                    }
-                    
-
-
+                    var blockDefinition = instanceObject.InstanceDefinition;
                     //3. then create instance node to point to the block def
-                    Node nodeBlockInstance = createBlockNode(getBlockInstanceName(instanceObject), instanceObject.InstanceXform, nodeIndex_BlockDefinition);
+                    Node nodeBlockInstance = createBlockNode(getBlockInstanceName(instanceObject),
+                                                            instanceObject.InstanceXform,
+                                                            -1,
+                                                            new ExtrasSHoP
+                                                            {
+                                                                instanceOf = blockDefinition.Name,
+                                                                instanceId = BlockDefToCount[blockDefinition]
+                                                            });
 
 
                     var nodeIndex_BlockInstance = dummy.Nodes.AddAndReturnIndex(nodeBlockInstance);
                     AddBlockNode(nodeIndex_BlockInstance, rhinoObject);
                     RootBlockInstanceNodeIndices.Add(nodeIndex_BlockInstance);
 
+                    BlockInstance2NodeIndex.Add(rhinoObject, nodeIndex_BlockInstance);
+
+                    List<int> children = createBlockNodesRecursive(instanceObject, instanceObject.InstanceXform, processedObjects);
+
+                    if (children != null && children.Count > 0)
+                    {
+                        if (nodeBlockInstance.Children == null)
+                        {
+                            nodeBlockInstance.Children = children.ToArray();
+                        }
+                        else
+                        {
+                            var tempList = new List<int>(nodeBlockInstance.Children);
+                            tempList.AddRange(children);
+                            nodeBlockInstance.Children = tempList.ToArray();
+                        }
+
+                    }
+                    
                 }
                 else//if just geometries
                 {
-                    processedObjects.Add(new ObjectExportData()
+                    var geoExportData = new ObjectExportData()
                     {
                         Object = rhinoObject,
                         RenderMaterial = GetObjectMaterial(rhinoObject),
-                    });
+                    };
+                    processedObjects.Add(geoExportData);
+
                 }
             }
 
@@ -591,40 +599,33 @@ namespace glTF_BinExporter
                 {
                     Rhino.Geometry.Transform nestedTransform = instanceTransform * nestedObject.InstanceXform;
 
-                    //1. check if block definition already exists
-                    bool hasDefNode = BlockDef2NodeIndex.ContainsKey(nestedObject.InstanceDefinition);
 
-                    int nodeIndex_BlockDefinition;
-                    //2. if not, then we create block def node
-                    if (!hasDefNode)
-                    {
-                        Node nodeBlockDef = createBlockNode(nestedObject.InstanceDefinition.Name, Transform.Identity);
-
-                        nodeIndex_BlockDefinition = dummy.Nodes.AddAndReturnIndex(nodeBlockDef);
-
-                        AddBlockNode(nodeIndex_BlockDefinition);
-                        BlockDef2NodeIndex.Add(nestedObject.InstanceDefinition, nodeIndex_BlockDefinition);
-
-                        List<int> children = createBlockNodesRecursive(nestedObject, nestedTransform, processedObjects);
-
-                        if (children != null && children.Count > 0)
-                            nodeBlockDef.Children = children.ToArray();
-                    }
-                    else
-                    {
-                        nodeIndex_BlockDefinition = BlockDef2NodeIndex[nestedObject.InstanceDefinition];
-                    }
-
-
-                    
-
-
+                    //create instance node to point to the block def
+                    var blockDefinition = nestedObject.InstanceDefinition;
                     //3. then create instance node to point to the block def
-                    Node nodeBlockInstance = createBlockNode(getBlockInstanceName(nestedObject), nestedTransform, nodeIndex_BlockDefinition);
+
+                    Node nodeBlockInstance = createBlockNode(getBlockInstanceName(nestedObject),
+                                                            nestedObject.InstanceXform,
+                                                            -1,
+                                                             new ExtrasSHoP
+                                                             {
+                                                                 instanceOf = blockDefinition.Name,
+                                                                 instanceId = BlockDefToCount[blockDefinition]
+                                                             });
 
                     var nodeIndex_BlockInstance = dummy.Nodes.AddAndReturnIndex(nodeBlockInstance);
+
                     AddBlockNode(nodeIndex_BlockInstance);
                     nodeIndices.Add(nodeIndex_BlockInstance);
+
+                    BlockInstance2NodeIndex.Add(nestedObject, nodeIndex_BlockInstance);
+
+                    List<int> children = createBlockNodesRecursive(nestedObject, nestedTransform, processedObjects);
+
+                    if (children != null && children.Count > 0)
+                        nodeBlockInstance.Children = children.ToArray();
+
+
 
 
                 }
@@ -633,12 +634,12 @@ namespace glTF_BinExporter
                     var geoExportData = new ObjectExportData()
                     {
                         Object = objectInsideBlock,
-                        Transform = instanceTransform,
+                        //Transform = Transform.Identity,
                         RenderMaterial = GetObjectMaterial(objectInsideBlock),
                     };
 
                     //we also need to add to the dictionary to track to 
-                    ExportData2BlockDefNodeIndex.Add(geoExportData, BlockDef2NodeIndex[instanceObject.InstanceDefinition]);
+                    ExportData2BlockInstanceNodeIndex.Add(geoExportData, BlockInstance2NodeIndex[instanceObject]);
 
                     processedObjects.Add(geoExportData);
                 }
@@ -661,41 +662,75 @@ namespace glTF_BinExporter
 
             if (string.IsNullOrWhiteSpace(name))
             {
-                return $"{instanceObj.InstanceDefinition.Name}_Unit{BlockDefToCount[instanceObj.InstanceDefinition]}";
+                return $"{instanceObj.InstanceDefinition.Name}.{BlockDefToCount[instanceObj.InstanceDefinition]}";
             }
             return name;
         }
 
-        Node createBlockNode(string name, Transform trans, int child = -1)
+        Node createBlockNode(string name, Transform trans, int child = -1, ExtrasSHoP extras = null)
         {
             Vector3d translation, diag;
             Transform rotation, orth;
-            Quaternion quaternion;
+            Quaternion quaternion = Quaternion.Identity;
+
+            
 
             trans.DecomposeAffine(out translation, out rotation, out orth, out diag);
-            rotation.GetQuaternion(out quaternion);
+
+            /*if (options.MapRhinoZToGltfY)
+            {
+                rotation *= (Constants.ZtoYUp);
+            }*/
+            //rotation.GetQuaternion(out quaternion);
+            rotation.GetYawPitchRoll(out var yaw, out var pitch, out var roll);
+            quaternion = ToQuaternion(yaw,pitch,roll);
+
+            
 
             Node node = new glTFLoader.Schema.Node()
             {
                 Name = name,
-                /*Translation = new float[3] { (float)translation.X, (float)translation.Y, (float)translation.Z },
-                Rotation = new float[4] { (float)quaternion.B, (float)quaternion.C, (float)quaternion.D, (float)quaternion.A }*/
+                Translation = new float[3] { (float)translation.X, (float)translation.Y, (float)translation.Z },
+                Rotation = new float[4] { (float)quaternion.B, (float)quaternion.C, (float)quaternion.D, (float)quaternion.A }
             };
-
             if(child >= 0)
                 node.Children = new int[] { child };
 
+            if (extras != null)
+            {
+                node.Extras = extras;
+            }
             return node;
+        }
+
+        public static Quaternion ToQuaternion(double yaw, double pitch, double roll) // yaw (Z), pitch (Y), roll (X)
+        {
+            // Abbreviations for the various angular functions
+            double cy = Math.Cos(yaw * 0.5);//z
+            double sy = Math.Sin(yaw * 0.5);//z
+            double cp = Math.Cos(pitch * 0.5);//y
+            double sp = Math.Sin(pitch * 0.5);//y
+            double cr = Math.Cos(roll * 0.5);//x
+            double sr = Math.Sin(roll * 0.5);//x
+
+            Quaternion q;
+            q = Quaternion.Zero;
+            q.A = cy * cp * cr + sy * sp * sr;
+            q.B = cy * cp * sr - sy * sp * cr;
+            q.C = sy * cp * sr + cy * sp * cr;
+            q.D = sy * cp * cr - cy * sp * sr;
+
+            return q;
         }
 
         //Dictionary keeping track of sanitized object to block definition: Sanitized object => Instance Definition
         //Dictionary<ObjectExportData, Rhino.DocObjects.InstanceDefinition> BlockInstanceData2BlockDef = new Dictionary<ObjectExportData, Rhino.DocObjects.InstanceDefinition>();
 
         //Dictionary keeping track of Block Definition to node index: Instance Definition => Node Index int
-        Dictionary<Rhino.DocObjects.InstanceDefinition, int> BlockDef2NodeIndex = new Dictionary<Rhino.DocObjects.InstanceDefinition, int>();
+        Dictionary<Rhino.DocObjects.RhinoObject, int> BlockInstance2NodeIndex = new Dictionary<Rhino.DocObjects.RhinoObject, int>();
 
         //Dictionary keeping track of Block Definition to immediate meshes: ExportData => Block Def Node Index
-        Dictionary<ObjectExportData, int> ExportData2BlockDefNodeIndex = new Dictionary<ObjectExportData, int>();
+        Dictionary<ObjectExportData, int> ExportData2BlockInstanceNodeIndex = new Dictionary<ObjectExportData, int>();
 
         //Root Level BlockInstanceNodeIndices
         List<int> RootBlockInstanceNodeIndices = new List<int>();
@@ -705,6 +740,13 @@ namespace glTF_BinExporter
 
         //Embedded Meshes (used to distinguish from root level meshes)
         List<Rhino.DocObjects.RhinoObject> EmbeddedObjects = new List<Rhino.DocObjects.RhinoObject>();
+
+        class ExtrasSHoP : Extras
+        {
+            public string instanceOf;
+            public int instanceId;
+
+        }
 
         #endregion
     }
