@@ -620,20 +620,21 @@ namespace glTF_BinExporter
             Transform rotation, orth;
             Quaternion quaternion = Quaternion.Identity;
 
-            
 
             trans.DecomposeAffine(out translation, out rotation, out orth, out diag);
 
-            /*if (options.MapRhinoZToGltfY)
-            {
-                rotation *= (Constants.ZtoYUp);
-            }*/
-            //rotation.GetQuaternion(out quaternion);
-            rotation.GetYawPitchRoll(out var yaw, out var pitch, out var roll);
-            quaternion = ToQuaternion(yaw,pitch,roll);
-
             
 
+
+            //rotation.GetQuaternion(out quaternion);
+            rotation.GetYawPitchRoll(out var yaw, out var pitch, out var roll);
+            quaternion = ToQuaternion(yaw,pitch,roll);//(z,y,x)
+            if (options.MapRhinoZToGltfY)
+            {
+                translation.Transform(Constants.ZtoYUp);
+                quaternion = ToQuaternion(pitch, yaw, roll);//(-y,z,x)
+
+            }
             Node node = new glTFLoader.Schema.Node()
             {
                 Name = name,
@@ -653,12 +654,12 @@ namespace glTF_BinExporter
         public static Quaternion ToQuaternion(double yaw, double pitch, double roll) // yaw (Z), pitch (Y), roll (X)
         {
             // Abbreviations for the various angular functions
-            double cy = Math.Cos(yaw * 0.5);//z
-            double sy = Math.Sin(yaw * 0.5);//z
-            double cp = Math.Cos(pitch * 0.5);//y
-            double sp = Math.Sin(pitch * 0.5);//y
-            double cr = Math.Cos(roll * 0.5);//x
-            double sr = Math.Sin(roll * 0.5);//x
+            double cy = Math.Cos(yaw * 0.5);//z(w)
+            double sy = Math.Sin(yaw * 0.5);//z(w)
+            double cp = Math.Cos(pitch * 0.5);//v(y)
+            double sp = Math.Sin(pitch * 0.5);//v(y)
+            double cr = Math.Cos(roll * 0.5);//u(x)
+            double sr = Math.Sin(roll * 0.5);//u(x)
 
             Quaternion q;
             q = Quaternion.Zero;
