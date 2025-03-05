@@ -458,7 +458,8 @@ namespace glTF_BinExporter
                         item.Object.CreateMeshes(Rhino.Geometry.MeshType.Render, parameters, false);
                     }
 
-                    List<Rhino.Geometry.Mesh> meshes = new List<Rhino.Geometry.Mesh>(item.Object.GetMeshes(Rhino.Geometry.MeshType.Render));
+                    
+                    List <Rhino.Geometry.Mesh> meshes = new List<Rhino.Geometry.Mesh>(item.Object.GetMeshes(Rhino.Geometry.MeshType.Render));
 
                     foreach (Rhino.Geometry.Mesh mesh in meshes)
                     {
@@ -469,7 +470,19 @@ namespace glTF_BinExporter
                     //Remove bad meshes
                     meshes.RemoveAll(x => x == null || !MeshIsValidForExport(x));
 
-                    item.Meshes = meshes.ToArray();
+                    //start thl @ SHoP
+
+                    Rhino.Geometry.Mesh joinedRenderMesh = new Rhino.Geometry.Mesh();
+
+                    if (meshes.Count > 0)
+                    {
+
+                        joinedRenderMesh.Append(meshes);
+
+                        item.Meshes = new Rhino.Geometry.Mesh[1] { joinedRenderMesh };
+                    }
+                    //end thl @ shop
+
                 }
             }
 
