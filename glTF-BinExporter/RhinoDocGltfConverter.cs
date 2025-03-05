@@ -420,55 +420,9 @@ namespace glTF_BinExporter
 
             foreach (var rhinoObject in rhinoObjects)
             {
-                //if it's a block instance
-                if (rhinoObject.ObjectType == Rhino.DocObjects.ObjectType.InstanceReference && rhinoObject is Rhino.DocObjects.InstanceObject instanceObject)
-                {
-                    var blockDefinition = instanceObject.InstanceDefinition;
-                    //3. then create instance node to point to the block def
-                    Node nodeBlockInstance = createBlockNode(getBlockInstanceName(instanceObject),
-                                                            instanceObject.InstanceXform,
-                                                            -1,
-                                                            new ExtrasSHoP
-                                                            {
-                                                                instanceOf = blockDefinition.Name,
-                                                                instanceId = BlockDefToCount[blockDefinition]
-                                                            });
-
-
-                    var nodeIndex_BlockInstance = dummy.Nodes.AddAndReturnIndex(nodeBlockInstance);
-                    AddBlockNode(nodeIndex_BlockInstance, rhinoObject);
-                    RootBlockInstanceNodeIndices.Add(nodeIndex_BlockInstance);
-
-                    BlockInstance2NodeIndex.Add(rhinoObject, nodeIndex_BlockInstance);
-
-                    List<int> children = createBlockNodesRecursive(instanceObject, instanceObject.InstanceXform, processedObjects);
-
-                    if (children != null && children.Count > 0)
-                    {
-                        if (nodeBlockInstance.Children == null)
-                        {
-                            nodeBlockInstance.Children = children.ToArray();
-                        }
-                        else
-                        {
-                            var tempList = new List<int>(nodeBlockInstance.Children);
-                            tempList.AddRange(children);
-                            nodeBlockInstance.Children = tempList.ToArray();
-                        }
-
-                    }
-                    
-                }
-                else//if just geometries
-                {
-                    var geoExportData = new ObjectExportData()
-                    {
-                        Object = rhinoObject,
-                        RenderMaterial = GetObjectMaterial(rhinoObject),
-                    };
-                    processedObjects.Add(geoExportData);
-
-                }
+                var nodeIndex = createBlockNodesRecursive(rhinoObject,null,processedObjects);
+                if(nodeIndex >= 0)
+                    RootBlockInstanceNodeIndices.Add(nodeIndex);
             }
 
             //Remove Unmeshable
@@ -588,67 +542,64 @@ namespace glTF_BinExporter
 
         //thl @ SHoP
         //the return int list is the indices of the immediate children nested block definition node
-        private List<int> createBlockNodesRecursive(Rhino.DocObjects.InstanceObject instanceObject, Rhino.Geometry.Transform instanceTransform, List<ObjectExportData> processedObjects)
+        private int createBlockNodesRecursive(RhinoObject rhinoObject, RhinoObject parent, List<ObjectExportData> processedObjects)
         {
-            List<int> nodeIndices = new List<int>();
-            for (int i = 0; i < instanceObject.InstanceDefinition.ObjectCount; i++)
+            if(parent != null)
+                EmbeddedObjects.Add(rhinoObject);
+
+            if (rhinoObject is Rhino.DocObjects.InstanceObject instanceObject)//if a block
             {
-                Rhino.DocObjects.RhinoObject objectInsideBlock = instanceObject.InstanceDefinition.Object(i);
+                var blockDefinition = instanceObject.InstanceDefinition;
 
-                if (objectInsideBlock is Rhino.DocObjects.InstanceObject nestedObject) // if nested blocks
-                {
-                    Rhino.Geometry.Transform nestedTransform = instanceTransform * nestedObject.InstanceXform;
+                Node nodeBlockInstance = createBlockNode(getBlockInstanceName(instanceObject),
+                                                                instanceObject.InstanceXform,
+                                                                -1,
+                                                                 new ExtrasSHoP
+                                                                 {
+                                                                     instanceOf = blockDefinition.Name,
+                                                                     instanceId = BlockDefToCount[blockDefinition]
+                                                                 });
 
+                var nodeIndex_BlockInstance = dummy.Nodes.AddAndReturnIndex(nodeBlockInstance);
 
-                    //create instance node to point to the block def
-                    var blockDefinition = nestedObject.InstanceDefinition;
-                    //3. then create instance node to point to the block def
-
-                    Node nodeBlockInstance = createBlockNode(getBlockInstanceName(nestedObject),
-                                                            nestedObject.InstanceXform,
-                                                            -1,
-                                                             new ExtrasSHoP
-                                                             {
-                                                                 instanceOf = blockDefinition.Name,
-                                                                 instanceId = BlockDefToCount[blockDefinition]
-                                                             });
-
-                    var nodeIndex_BlockInstance = dummy.Nodes.AddAndReturnIndex(nodeBlockInstance);
-
+                if(parent != null)
                     AddBlockNode(nodeIndex_BlockInstance);
-                    nodeIndices.Add(nodeIndex_BlockInstance);
 
-                    BlockInstance2NodeIndex.Add(nestedObject, nodeIndex_BlockInstance);
+                BlockInstance2NodeIndex.Add(instanceObject, nodeIndex_BlockInstance);
 
-                    List<int> children = createBlockNodesRecursive(nestedObject, nestedTransform, processedObjects);
-
-                    if (children != null && children.Count > 0)
-                        nodeBlockInstance.Children = children.ToArray();
-
-
-
-
-                }
-                else // if just geometry
+                List<int> children = new List<int>();
+                for (int i = 0; i < instanceObject.InstanceDefinition.ObjectCount; i++)
                 {
-                    var geoExportData = new ObjectExportData()
-                    {
-                        Object = objectInsideBlock,
-                        //Transform = Transform.Identity,
-                        RenderMaterial = GetObjectMaterial(objectInsideBlock),
-                    };
+                    Rhino.DocObjects.RhinoObject objectInsideBlock = instanceObject.InstanceDefinition.Object(i);
 
-                    //we also need to add to the dictionary to track to 
-                    ExportData2BlockInstanceNodeIndex.Add(geoExportData, BlockInstance2NodeIndex[instanceObject]);
+                    var nodeIndex = createBlockNodesRecursive(objectInsideBlock, instanceObject, processedObjects);
 
-                    processedObjects.Add(geoExportData);
+                    if(nodeIndex >= 0)
+                        children.Add(nodeIndex);
                 }
 
-                EmbeddedObjects.Add(objectInsideBlock);
+                if (children.Count > 0)
+                    nodeBlockInstance.Children = children.ToArray();
 
+                return nodeIndex_BlockInstance;
             }
-            return nodeIndices;
+            else//if just geometry
+            {
+                var geoExportData = new ObjectExportData()
+                {
+                    Object = rhinoObject,
+                    //Transform = Transform.Identity,
+                    RenderMaterial = GetObjectMaterial(rhinoObject),
+                };
 
+                if(parent != null)                //we also need to add to the dictionary to track to 
+                    ExportData2BlockInstanceNodeIndex.Add(geoExportData, BlockInstance2NodeIndex[parent]);
+
+                processedObjects.Add(geoExportData);
+
+                return -1; // when hitting a leaf
+            }
+            
         }
 
         string getBlockInstanceName(Rhino.DocObjects.InstanceObject instanceObj)
