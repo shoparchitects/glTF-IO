@@ -200,12 +200,8 @@ namespace glTF_BinExporter
         }
 
         //thl @ SHoP
-        //if rhinoObject is null that means a definition is being added
-        private void AddBlockNode(int nodeIndex, Rhino.DocObjects.RhinoObject rhinoObject = null)
+        private void AddBlockNodeToScene(int nodeIndex, Rhino.DocObjects.RhinoObject rhinoObject)
         {
-            //thl @ SHoP - Adding additional check so we don't add embedded objects to root level
-            if (rhinoObject == null || EmbeddedObjects.Contains(rhinoObject))
-                return;
             if (options.ExportLayers)
             {
                 AddToLayer(doc.Layers[rhinoObject.Attributes.LayerIndex], nodeIndex);
@@ -421,8 +417,8 @@ namespace glTF_BinExporter
             foreach (var rhinoObject in rhinoObjects)
             {
                 var nodeIndex = createBlockNodesRecursive(rhinoObject,null,processedObjects);
-                if(nodeIndex >= 0)
-                    RootBlockInstanceNodeIndices.Add(nodeIndex);
+                /*if(nodeIndex >= 0)
+                    RootBlockInstanceNodeIndices.Add(nodeIndex);*/
             }
 
             //Remove Unmeshable
@@ -562,8 +558,8 @@ namespace glTF_BinExporter
 
                 var nodeIndex_BlockInstance = dummy.Nodes.AddAndReturnIndex(nodeBlockInstance);
 
-                if(parent != null)
-                    AddBlockNode(nodeIndex_BlockInstance);
+                if(parent == null)
+                    AddBlockNodeToScene(nodeIndex_BlockInstance, rhinoObject);
 
                 BlockInstance2NodeIndex.Add(instanceObject, nodeIndex_BlockInstance);
 
@@ -684,7 +680,7 @@ namespace glTF_BinExporter
         Dictionary<ObjectExportData, int> ExportData2BlockInstanceNodeIndex = new Dictionary<ObjectExportData, int>();
 
         //Root Level BlockInstanceNodeIndices
-        List<int> RootBlockInstanceNodeIndices = new List<int>();
+        //List<int> RootBlockInstanceNodeIndices = new List<int>();
 
         //Block Instance Counter
         Dictionary<Rhino.DocObjects.InstanceDefinition, int> BlockDefToCount = new Dictionary<Rhino.DocObjects.InstanceDefinition, int>();
