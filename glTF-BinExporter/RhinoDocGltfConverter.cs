@@ -98,6 +98,13 @@ namespace glTF_BinExporter
             dummy.ExtensionsUsed.Add(glTFExtensions.KHR_materials_ior.Tag);
             dummy.ExtensionsUsed.Add(glTFExtensions.KHR_materials_specular.Tag);
 
+            /*if (options.MapRhinoZToGltfY)
+            {
+                Transform axisChange = Transform.Rotation(-Math.PI / 2, Vector3d.XAxis, Point3d.Origin);
+                foreach (Rhino.DocObjects.RhinoObject rhinoObject in objects)
+                    doc.Objects.Transform(rhinoObject, axisChange, true);
+            }*/
+
             IEnumerable<Rhino.DocObjects.RhinoObject> pointClouds = objects.Where(x => x.ObjectType == Rhino.DocObjects.ObjectType.PointSet);
 
             foreach (Rhino.DocObjects.RhinoObject rhinoObject in pointClouds)
@@ -413,12 +420,12 @@ namespace glTF_BinExporter
         {
             List<ObjectExportData> processedObjects = new List<ObjectExportData>();
 
-
             foreach (var rhinoObject in rhinoObjects)
             {
                 var nodeIndex = createBlockNodesRecursive(rhinoObject,null,processedObjects);
                 /*if(nodeIndex >= 0)
                     RootBlockInstanceNodeIndices.Add(nodeIndex);*/
+                
             }
 
             //Remove Unmeshable
@@ -556,6 +563,7 @@ namespace glTF_BinExporter
             if(parent != null)
                 EmbeddedObjects.Add(rhinoObject);
 
+
             if (rhinoObject is Rhino.DocObjects.InstanceObject instanceObject)//if a block
             {
                 var blockDefinition = instanceObject.InstanceDefinition;
@@ -570,7 +578,6 @@ namespace glTF_BinExporter
                                                                  });
 
                 var nodeIndex_BlockInstance = dummy.Nodes.AddAndReturnIndex(nodeBlockInstance);
-
                 if(parent == null)
                     AddBlockNodeToScene(nodeIndex_BlockInstance, rhinoObject);
 
@@ -633,21 +640,20 @@ namespace glTF_BinExporter
             Transform rotation, orth;
             Quaternion quaternion = Quaternion.Identity;
 
-
             trans.DecomposeAffine(out translation, out rotation, out orth, out diag);
 
-            
+            var rotationMatrix = Transform2Matrix(rotation);
+            quaternion = Matrix2Quaternion(rotationMatrix);
 
 
-            //rotation.GetQuaternion(out quaternion);
-            rotation.GetYawPitchRoll(out var yaw, out var pitch, out var roll);
-            quaternion = ToQuaternion(yaw,pitch,roll);//(z,y,x)
             if (options.MapRhinoZToGltfY)
             {
                 translation.Transform(Constants.ZtoYUp);
-                quaternion = ToQuaternion(pitch, yaw, roll);//(-y,z,x)
-
+                quaternion = new Quaternion(quaternion.A, quaternion.B, quaternion.D, -quaternion.C);//half empirical half
+                //stackoverflow post - https://stackoverflow.com/questions/16099979/can-i-switch-x-y-z-in-a-quaternion
             }
+
+
             Node node = new glTFLoader.Schema.Node()
             {
                 Name = name,
@@ -682,6 +688,39 @@ namespace glTF_BinExporter
             q.D = sy * cp * cr - cy * sp * sr;
 
             return q;
+        }
+
+        public static System.Numerics.Matrix4x4 Transform2Matrix(Transform rotationMatrix)
+        {
+            if (rotationMatrix == null)
+                return default;
+
+            rotationMatrix = rotationMatrix.Transpose();
+            return new System.Numerics.Matrix4x4(
+                                                (float)rotationMatrix.M00,
+                                                (float)rotationMatrix.M01,
+                                                (float)rotationMatrix.M02,
+                                                (float)rotationMatrix.M03,
+                                                (float)rotationMatrix.M10,
+                                                (float)rotationMatrix.M11,
+                                                (float)rotationMatrix.M12,
+                                                (float)rotationMatrix.M13,
+                                                (float)rotationMatrix.M20,
+                                                (float)rotationMatrix.M21,
+                                                (float)rotationMatrix.M22,
+                                                (float)rotationMatrix.M23,
+                                                (float)rotationMatrix.M30,
+                                                (float)rotationMatrix.M31,
+                                                (float)rotationMatrix.M32,
+                                                (float)rotationMatrix.M33);
+
+        }
+
+        public static Quaternion Matrix2Quaternion(System.Numerics.Matrix4x4 matrix)
+        {
+            var quaternionSystem = System.Numerics.Quaternion.CreateFromRotationMatrix(matrix);
+
+            return new Quaternion(quaternionSystem.W,quaternionSystem.X,quaternionSystem.Y,quaternionSystem.Z);
         }
 
         //Dictionary keeping track of sanitized object to block definition: Sanitized object => Instance Definition
