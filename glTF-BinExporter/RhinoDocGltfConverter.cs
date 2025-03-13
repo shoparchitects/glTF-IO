@@ -712,6 +712,11 @@ namespace glTF_BinExporter
             return q;
         }
 
+        /// <summary>
+        /// Converting from Rhino Transform Matrix to System Numerics 4x4 Matrix
+        /// </summary>
+        /// <param name="rotationMatrix"></param>
+        /// <returns></returns>
         public static System.Numerics.Matrix4x4 Transform2Matrix(Transform rotationMatrix)
         {
             if (rotationMatrix == null)
@@ -738,6 +743,12 @@ namespace glTF_BinExporter
 
         }
 
+
+        /// <summary>
+        /// Transform from System Numerics 4x4 Matrix to Rhino Quaternion
+        /// </summary>
+        /// <param name="matrix"></param>
+        /// <returns></returns>
         public static Quaternion Matrix2Quaternion(System.Numerics.Matrix4x4 matrix)
         {
             var quaternionSystem = System.Numerics.Quaternion.CreateFromRotationMatrix(matrix);
