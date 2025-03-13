@@ -278,7 +278,22 @@ namespace glTF_BinExporter
             if (material == null && options.UseDisplayColorForUnsetMaterials)
             {
                 Rhino.Display.Color4f objectColor = GetObjectColor(rhinoObject);
-                return CreateSolidColorMaterial(objectColor);
+                //thl@SHoP start
+                if (_DisplayColorToMaterialIndex.ContainsKey(objectColor))
+                {
+                    return _DisplayColorToMaterialIndex[objectColor];
+                }
+                else
+                {
+                    var matIndex =  CreateSolidColorMaterial(objectColor);
+
+                    _DisplayColorToMaterialIndex.Add(objectColor, matIndex);
+
+                    return matIndex;
+
+                }
+                //thl@SHoP end
+
             }
             else if (material == null)
             {
@@ -529,6 +544,13 @@ namespace glTF_BinExporter
             return doc.Layers[layerIndex].RenderMaterial;
         }
 
+        /// <summary>
+        /// thl@SHoP - ARCHIVE
+        /// </summary>
+        /// <param name="instanceObject"></param>
+        /// <param name="instanceTransform"></param>
+        /// <param name="pieces"></param>
+        /// <param name="transforms"></param>
         private void ExplodeRecursive(Rhino.DocObjects.InstanceObject instanceObject, Rhino.Geometry.Transform instanceTransform, List<Rhino.DocObjects.RhinoObject> pieces, List<Rhino.Geometry.Transform> transforms)
         {
             for (int i = 0; i < instanceObject.InstanceDefinition.ObjectCount; i++)
@@ -740,6 +762,9 @@ namespace glTF_BinExporter
 
         //Embedded Meshes (used to distinguish from root level meshes)
         List<Rhino.DocObjects.RhinoObject> EmbeddedObjects = new List<Rhino.DocObjects.RhinoObject>();
+        
+        //Tracking Display color materials if no material is assigned to layers
+        Dictionary<Rhino.Display.Color4f, int> _DisplayColorToMaterialIndex = new Dictionary<Rhino.Display.Color4f, int>();
 
         class ExtrasSHoP : Extras
         {
