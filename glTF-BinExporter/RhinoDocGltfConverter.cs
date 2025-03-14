@@ -663,7 +663,6 @@ namespace glTF_BinExporter
             Quaternion quaternion = Quaternion.Identity;
 
             trans.DecomposeAffine(out translation, out rotation, out orth, out diag);
-
             var rotationMatrix = Transform2Matrix(rotation);
             quaternion = Matrix2Quaternion(rotationMatrix);
 
@@ -672,6 +671,7 @@ namespace glTF_BinExporter
             {
                 translation.Transform(Constants.ZtoYUp);
                 quaternion = new Quaternion(quaternion.A, quaternion.B, quaternion.D, -quaternion.C);//half empirical half
+                diag = new Vector3d(diag.X, diag.Z, diag.Y);
                 //stackoverflow post - https://stackoverflow.com/questions/16099979/can-i-switch-x-y-z-in-a-quaternion
             }
 
@@ -680,7 +680,8 @@ namespace glTF_BinExporter
             {
                 Name = name,
                 Translation = new float[3] { (float)translation.X, (float)translation.Y, (float)translation.Z },
-                Rotation = new float[4] { (float)quaternion.B, (float)quaternion.C, (float)quaternion.D, (float)quaternion.A }
+                Rotation = new float[4] { (float)quaternion.B, (float)quaternion.C, (float)quaternion.D, (float)quaternion.A },
+                Scale = new float[3] { (float)diag.X, (float)diag.Y, (float)diag.Z}
             };
             if(child >= 0)
                 node.Children = new int[] { child };
