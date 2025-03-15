@@ -39,16 +39,32 @@ namespace glTF_BinExporter
       glTFLoader.Schema.Mesh mesh = new glTFLoader.Schema.Mesh()
       {
         Primitives = primitives.ToArray(),
+        Name = exportData.Object.Name //thl@SHoP
       };
+
+      //thl@SHoP
+      if (options.FlipMirroredNormals && exportData.Mirrored)
+        mesh.Name += "_MRD";
 
       return dummy.Meshes.AddAndReturnIndex(mesh);
     }
 
+    /// <summary>
+    /// Makes sure of mapping rhino Z to gltf Y if chosen and flip normals on meshes if so chosen
+    /// </summary>
+    /// <param name="rhinoMesh"></param>
     private void PreprocessMesh(Mesh rhinoMesh)
     {
       if (options.MapRhinoZToGltfY)
       {
         rhinoMesh.Transform(Constants.ZtoYUp);
+      }
+
+      //thl@SHoP
+      //this step ensures no normals issues should show up for a mirrored mesh
+      if(options.FlipMirroredNormals && exportData.Mirrored)
+      {
+        rhinoMesh.Flip(true, true, false);
       }
 
       rhinoMesh.TextureCoordinates.ReverseTextureCoordinates(1);
@@ -139,6 +155,11 @@ namespace glTF_BinExporter
         primitive.Material = materialIndex;
 
         primitives.Add(primitive);
+        if (options.MapRhinoZToGltfY)
+        {
+            Constants.ZtoYUp.TryGetInverse(out var inverse);
+            rhinoMesh.Transform(inverse);
+        }
       }
 
       return primitives;

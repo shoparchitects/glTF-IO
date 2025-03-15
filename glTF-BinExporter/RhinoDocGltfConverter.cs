@@ -18,6 +18,8 @@ namespace glTF_BinExporter
         public Rhino.Geometry.Transform Transform = Rhino.Geometry.Transform.Identity;
         public Rhino.Render.RenderMaterial RenderMaterial = null;
         public Rhino.DocObjects.RhinoObject Object = null;
+        //thl@SHoP
+        public bool Mirrored = false;
     }
 
     class RhinoDocGltfConverter
@@ -138,17 +140,60 @@ namespace glTF_BinExporter
                 var ogGeometry = exportData.Object;
 
                 int meshIndex;
+                RhinoMeshGltfConverter meshConverter;
+
+                //thl@SHoP
+                //this is where the magic happens - looking up previous meshes to see if we can instance/link to an existing mesh so we don't create a repetative mesh
+                bool needsLookupMirroredMeshID = options.FlipMirroredNormals && exportData.Mirrored;
+
                 if (geo2meshIndex.ContainsKey(ogGeometry.Id))
                 {
-                    meshIndex = geo2meshIndex[ogGeometry.Id];
+
+                    if (needsLookupMirroredMeshID)
+                    {
+                        if (!OriginalRhinoID2MirroredMeshID.ContainsKey(ogGeometry.Id))//if it does not already exists then we have to create it
+                        {
+                            meshConverter = new RhinoMeshGltfConverter(exportData, materialIndex, options, binary, dummy, binaryBuffer);
+                            meshIndex = meshConverter.AddMesh();
+
+                            OriginalRhinoID2MirroredMeshID.Add(ogGeometry.Id, meshIndex);
+
+                        }
+                        meshIndex = OriginalRhinoID2MirroredMeshID[ogGeometry.Id];
+                    }
+                    else
+                    {
+                        meshIndex = geo2meshIndex[ogGeometry.Id];
+                    }
                 }
                 else
                 {
+                    //This is to take care of scenarios where flipped geometry is encountered before encountering original geometry
+                    if (needsLookupMirroredMeshID) //making sure we record the original geometry in the meshes first
+                    {
+                        exportData.Mirrored = false;//first make it not mirrored
 
-                    RhinoMeshGltfConverter meshConverter = new RhinoMeshGltfConverter(exportData, materialIndex, options, binary, dummy, binaryBuffer);
-                    meshIndex = meshConverter.AddMesh();
+                        //ADDING ORIGINAL
+                        meshConverter = new RhinoMeshGltfConverter(exportData, materialIndex, options, binary, dummy, binaryBuffer);
+                        meshIndex = meshConverter.AddMesh();
+                        geo2meshIndex.Add(ogGeometry.Id, meshIndex);
 
-                    geo2meshIndex.Add(ogGeometry.Id, meshIndex);
+                        exportData.Mirrored = true;//flip it back to mirrored afterwards
+
+                        //ADDING MIRRORED
+                        //Now adding the mirrored Meshes
+                        meshConverter = new RhinoMeshGltfConverter(exportData, materialIndex, options, binary, dummy, binaryBuffer);
+                        meshIndex = meshConverter.AddMesh();
+                        OriginalRhinoID2MirroredMeshID.Add(ogGeometry.Id, meshIndex);
+
+                    }
+                    else
+                    {
+                        //ONLY ADDING MIRRORED
+                        meshConverter = new RhinoMeshGltfConverter(exportData, materialIndex, options, binary, dummy, binaryBuffer);
+                        meshIndex = meshConverter.AddMesh();
+                        geo2meshIndex.Add(ogGeometry.Id, meshIndex);
+                    }
                 }
 
                 glTFLoader.Schema.Node node = new glTFLoader.Schema.Node()
@@ -437,7 +482,7 @@ namespace glTF_BinExporter
 
             foreach (var rhinoObject in rhinoObjects)
             {
-                var nodeIndex = createBlockNodesRecursive(rhinoObject,null,processedObjects);
+                var nodeIndex = createBlockNodesRecursive(rhinoObject,null,false,processedObjects);
                 /*if(nodeIndex >= 0)
                     RootBlockInstanceNodeIndices.Add(nodeIndex);*/
                 
@@ -480,8 +525,25 @@ namespace glTF_BinExporter
                         item.Object.CreateMeshes(Rhino.Geometry.MeshType.Render, parameters, false);
                     }
 
-                    
                     List <Rhino.Geometry.Mesh> meshes = new List<Rhino.Geometry.Mesh>(item.Object.GetMeshes(Rhino.Geometry.MeshType.Render));
+                    //thl@SHoP
+                    /*List<Rhino.Geometry.Mesh> meshes;
+                    if (item.Mirrored && options.FlipMirroredNormals)
+                    {
+                        meshes = new List<Rhino.Geometry.Mesh>();
+                        var tempMeshes = item.Object.GetMeshes(Rhino.Geometry.MeshType.Render);
+                        foreach (var mesh in tempMeshes)
+                        {
+                            var newMesh = new Rhino.Geometry.Mesh();
+                            newMesh.CopyFrom(mesh);
+                            meshes.Add(newMesh);
+                        }
+                    }
+                    else
+                    {
+                        meshes = new List<Rhino.Geometry.Mesh>(item.Object.GetMeshes(Rhino.Geometry.MeshType.Render));
+                    }*/
+
 
                     foreach (Rhino.Geometry.Mesh mesh in meshes)
                     {
@@ -544,43 +606,10 @@ namespace glTF_BinExporter
             return doc.Layers[layerIndex].RenderMaterial;
         }
 
-        /// <summary>
-        /// thl@SHoP - ARCHIVE
-        /// </summary>
-        /// <param name="instanceObject"></param>
-        /// <param name="instanceTransform"></param>
-        /// <param name="pieces"></param>
-        /// <param name="transforms"></param>
-        private void ExplodeRecursive(Rhino.DocObjects.InstanceObject instanceObject, Rhino.Geometry.Transform instanceTransform, List<Rhino.DocObjects.RhinoObject> pieces, List<Rhino.Geometry.Transform> transforms)
-        {
-            for (int i = 0; i < instanceObject.InstanceDefinition.ObjectCount; i++)
-            {
-                Rhino.DocObjects.RhinoObject rhinoObject = instanceObject.InstanceDefinition.Object(i);
-
-                if (rhinoObject is Rhino.DocObjects.InstanceObject nestedObject)
-                {
-                    Rhino.Geometry.Transform nestedTransform = instanceTransform * nestedObject.InstanceXform;
-
-                    ExplodeRecursive(nestedObject, nestedTransform, pieces, transforms);
-                }
-                else
-                {
-                    pieces.Add(rhinoObject);
-
-                    transforms.Add(instanceTransform);
-                }
-            }
-        }
-
-
-
         #region SHoP Custom
-        //thl @ SHoP -
-
-
         //thl @ SHoP
         //the return int list is the indices of the immediate children nested block definition node
-        private int createBlockNodesRecursive(RhinoObject rhinoObject, RhinoObject parent, List<ObjectExportData> processedObjects)
+        private int createBlockNodesRecursive(RhinoObject rhinoObject, RhinoObject parent, bool parentMirrored, List<ObjectExportData> processedObjects)
         {
             if(parent != null)
                 EmbeddedObjects.Add(rhinoObject);
@@ -592,6 +621,7 @@ namespace glTF_BinExporter
 
                 Node nodeBlockInstance = createBlockNode(getBlockInstanceName(instanceObject),
                                                                 instanceObject.InstanceXform,
+                                                                out bool mirrored,
                                                                 -1,
                                                                  new ExtrasSHoP
                                                                  {
@@ -610,7 +640,7 @@ namespace glTF_BinExporter
                 {
                     Rhino.DocObjects.RhinoObject objectInsideBlock = instanceObject.InstanceDefinition.Object(i);
 
-                    var nodeIndex = createBlockNodesRecursive(objectInsideBlock, instanceObject, processedObjects);
+                    var nodeIndex = createBlockNodesRecursive(objectInsideBlock, instanceObject, mirrored ^ parentMirrored, processedObjects); //using logical XOR for mirrored and parent mirrored because if both are true then its no longer mirroed
 
                     if(nodeIndex >= 0)
                         children.Add(nodeIndex);
@@ -628,6 +658,7 @@ namespace glTF_BinExporter
                     Object = rhinoObject,
                     //Transform = Transform.Identity,
                     RenderMaterial = GetObjectMaterial(rhinoObject),
+                    Mirrored = parentMirrored
                 };
 
                 if(parent != null)                //we also need to add to the dictionary to track to 
@@ -656,8 +687,9 @@ namespace glTF_BinExporter
             return name;
         }
 
-        Node createBlockNode(string name, Transform trans, int child = -1, ExtrasSHoP extras = null)
+        Node createBlockNode(string name, Transform trans, out bool mirrored, int child = -1, ExtrasSHoP extras = null)
         {
+            mirrored = false; // orientation preserved = ! mirrored
             Vector3d translation, diag;
             Transform rotation, orth;
             Quaternion quaternion = Quaternion.Identity;
@@ -665,6 +697,27 @@ namespace glTF_BinExporter
             trans.DecomposeAffine(out translation, out rotation, out orth, out diag);
             var rotationMatrix = Transform2Matrix(rotation);
             quaternion = Matrix2Quaternion(rotationMatrix);
+
+            var rigidType = trans.RigidType;//scaling or not (not sure when orientation reverseing happens)
+
+            /*if (rigidType == TransformRigidType.Rigid)
+                diag = new Vector3d(1, 1, 1);*/
+
+            var simType = trans.SimilarityType;//mirror or not -1: orientationReversing, 0: Notsimilarity, 1: orientationPreserviing
+                                               //NotSimilarity takes precedence over orientationReversing, meaning if you mirror and "deform"(NU scale) then it shows NotSimilarity
+
+            //need to handle if it's mirrored
+            if (simType == TransformSimilarityType.OrientationReversing)
+            {
+                mirrored = true;
+            }
+            else if (simType == TransformSimilarityType.NotSimilarity)
+            {
+                if(diag.X < 0 || diag.Y < 0 || diag.Z < 0)//now check if there's any negative sign in the diagonal to see any mirroring
+                {
+                    mirrored = true;
+                }
+            }
 
 
             if (options.MapRhinoZToGltfY)
@@ -778,6 +831,9 @@ namespace glTF_BinExporter
         //Tracking Display color materials if no material is assigned to layers
         Dictionary<Rhino.Display.Color4f, int> _DisplayColorToMaterialIndex = new Dictionary<Rhino.Display.Color4f, int>();
 
+        //Tracking mirrored geometry ids- Original Rhino Object GUID -> mesh ID
+        Dictionary<Guid,int> OriginalRhinoID2MirroredMeshID = new Dictionary<Guid,int>();
+
         class ExtrasSHoP : Extras
         {
             public string instanceOf;
@@ -785,6 +841,36 @@ namespace glTF_BinExporter
 
         }
 
+        #endregion
+
+        #region ARCHIVE
+        /// <summary>
+        /// thl@SHoP - ARCHIVE
+        /// </summary>
+        /// <param name="instanceObject"></param>
+        /// <param name="instanceTransform"></param>
+        /// <param name="pieces"></param>
+        /// <param name="transforms"></param>
+        private void ExplodeRecursive(Rhino.DocObjects.InstanceObject instanceObject, Rhino.Geometry.Transform instanceTransform, List<Rhino.DocObjects.RhinoObject> pieces, List<Rhino.Geometry.Transform> transforms)
+        {
+            for (int i = 0; i < instanceObject.InstanceDefinition.ObjectCount; i++)
+            {
+                Rhino.DocObjects.RhinoObject rhinoObject = instanceObject.InstanceDefinition.Object(i);
+
+                if (rhinoObject is Rhino.DocObjects.InstanceObject nestedObject)
+                {
+                    Rhino.Geometry.Transform nestedTransform = instanceTransform * nestedObject.InstanceXform;
+
+                    ExplodeRecursive(nestedObject, nestedTransform, pieces, transforms);
+                }
+                else
+                {
+                    pieces.Add(rhinoObject);
+
+                    transforms.Add(instanceTransform);
+                }
+            }
+        }
         #endregion
     }
 }

@@ -42,6 +42,10 @@ namespace glTF_BinExporter
 
     private CheckBox useSettingsDontShowDialogCheck = new CheckBox();
 
+    //thl@SHoP start
+    private CheckBox flipMirroredNormalsAuto = new CheckBox();
+    //thl@SHoP end
+
     public ExportOptionsDialog()
     {
       Resizable = false;
@@ -55,6 +59,10 @@ namespace glTF_BinExporter
       useDisplayColorForUnsetMaterial.Text = Rhino.UI.Localization.LocalizeString("Use display color for objects with no material set", 6);
 
       exportLayers.Text = Rhino.UI.Localization.LocalizeString("Export Layers", 7);
+
+      //thl@SHoP
+      flipMirroredNormalsAuto.Text = Rhino.UI.Localization.LocalizeString("Flip Normals in Mirrored Block(s)", 28);
+      //thl@SHoP
 
       subdBox.Text = Rhino.UI.Localization.LocalizeString("SubD Meshing", 8);
 
@@ -167,6 +175,7 @@ namespace glTF_BinExporter
             new TableRow(exportMaterials),
             new TableRow(useDisplayColorForUnsetMaterial),
             new TableRow(exportLayers),
+            new TableRow(flipMirroredNormalsAuto),
             null,
           },
         },
@@ -241,6 +250,8 @@ namespace glTF_BinExporter
       exportMaterials.Checked = glTFBinExporterPlugin.ExportMaterials;
       EnableDisableMaterialControls(glTFBinExporterPlugin.ExportMaterials);
       exportLayers.Checked = glTFBinExporterPlugin.ExportLayers;
+      //thl@SHoP
+      flipMirroredNormalsAuto.Checked = glTFBinExporterPlugin.FlipMirroredNormals;
 
       useDisplayColorForUnsetMaterial.Checked = glTFBinExporterPlugin.UseDisplayColorForUnsetMaterials;
 
@@ -272,6 +283,8 @@ namespace glTF_BinExporter
       glTFBinExporterPlugin.ExportMaterials = GetCheckboxValue(exportMaterials);
       glTFBinExporterPlugin.UseDisplayColorForUnsetMaterials = GetCheckboxValue(useDisplayColorForUnsetMaterial);
       glTFBinExporterPlugin.ExportLayers = GetCheckboxValue(exportLayers);
+      //thl@SHoP
+      glTFBinExporterPlugin.FlipMirroredNormals = GetCheckboxValue(flipMirroredNormalsAuto);
 
       bool controlNet = GetCheckboxValue(useSubdControlNet);
       glTFBinExporterPlugin.SubDExportMode = controlNet ? SubDMode.ControlNet : SubDMode.Surface;
