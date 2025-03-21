@@ -724,10 +724,13 @@ namespace glTF_BinExporter
             {
                 translation.Transform(Constants.ZtoYUp);
                 quaternion = new Quaternion(quaternion.A, quaternion.B, quaternion.D, -quaternion.C);//half empirical half
+                                                                                                     //stackoverflow post - https://stackoverflow.com/questions/16099979/can-i-switch-x-y-z-in-a-quaternion
                 diag = new Vector3d(diag.X, diag.Z, diag.Y);
-                //stackoverflow post - https://stackoverflow.com/questions/16099979/can-i-switch-x-y-z-in-a-quaternion
             }
 
+            //commented out for now to test if the rest of the logic is working
+            /*if (options.FlipMirroredNormals && mirrored)
+                diag *= -1;*/
 
             Node node = new glTFLoader.Schema.Node()
             {

@@ -4,39 +4,76 @@ using Rhino.Geometry;
 
 namespace glTF_BinExporter
 {
-  public static class Constants
-  {
-    public static readonly Transform ZtoYUp = new Transform()
+    public static class Constants
     {
-      M00 = 1,
-      M01 = 0,
-      M02 = 0,
-      M03 = 0,
+        public static readonly Transform ZtoYUp = new Transform()
+        {
+            M00 = 1,
+            M01 = 0,
+            M02 = 0,
+            M03 = 0,
 
-      M10 = 0,
-      M11 = 0,
-      M12 = 1,
-      M13 = 0,
+            M10 = 0,
+            M11 = 0,
+            M12 = 1,
+            M13 = 0,
 
-      M20 = 0,
-      M21 = -1,
-      M22 = 0,
-      M23 = 0,
+            M20 = 0,
+            M21 = -1,
+            M22 = 0,
+            M23 = 0,
 
-      M30 = 0,
-      M31 = 0,
-      M32 = 0,
-      M33 = 1,
-    };
+            M30 = 0,
+            M31 = 0,
+            M32 = 0,
+            M33 = 1,
+        };
+
+        public static readonly Transform MirrorXYZ = new Transform()
+        {
+            M00 = -1,
+            M01 = 0,
+            M02 = 0,
+            M03 = 0,
+
+            M10 = 0,
+            M11 = -1,
+            M12 = 0,
+            M13 = 0,
+
+            M20 = 0,
+            M21 = 0,
+            M22 = -1,
+            M23 = 0,
+
+            M30 = 0,
+            M31 = 0,
+            M32 = 0,
+            M33 = 1,
+        };
+
+
+        private static Transform _ZtoYInverse;
+        public static Transform ZtoYInverse
+        { 
+            get
+            {
+                if(_ZtoYInverse == default)
+                     ZtoYUp.TryGetInverse(out _ZtoYInverse);
+                return _ZtoYInverse;
+
+            }
+        }
+
 
     public static readonly ObjectType[] ValidObjectTypes = new ObjectType[] {
-            ObjectType.Brep,
-            ObjectType.InstanceReference,
-            ObjectType.Mesh,
-            ObjectType.Extrusion,
-            ObjectType.Surface,
-            ObjectType.SubD
-        };
+        ObjectType.Brep,
+        ObjectType.InstanceReference,
+        ObjectType.Mesh,
+        ObjectType.Extrusion,
+        ObjectType.Surface,
+        ObjectType.SubD
+    };
 
     public static readonly byte[][] Paddings = new byte[][]
     {

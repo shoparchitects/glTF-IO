@@ -64,10 +64,25 @@ namespace glTF_BinExporter
       //this step ensures no normals issues should show up for a mirrored mesh
       if(options.FlipMirroredNormals && exportData.Mirrored)
       {
-        rhinoMesh.Flip(true, true, false);
+        //rhinoMesh.Transform(Constants.MirrorXYZ);
+        rhinoMesh.Flip(true, true, true);
       }
 
       rhinoMesh.TextureCoordinates.ReverseTextureCoordinates(1);
+    }
+
+    private void PostprocessMesh(Mesh rhinoMesh)
+    {
+        if (options.MapRhinoZToGltfY)
+        {
+            rhinoMesh.Transform(Constants.ZtoYInverse);
+        }
+
+        if (options.FlipMirroredNormals && exportData.Mirrored)
+        {
+            //rhinoMesh.Transform(Constants.MirrorXYZ);
+            rhinoMesh.Flip(true, true, true);
+        }
     }
 
     private List<glTFLoader.Schema.MeshPrimitive> GetPrimitives()
@@ -155,11 +170,8 @@ namespace glTF_BinExporter
         primitive.Material = materialIndex;
 
         primitives.Add(primitive);
-        if (options.MapRhinoZToGltfY)
-        {
-            Constants.ZtoYUp.TryGetInverse(out var inverse);
-            rhinoMesh.Transform(inverse);
-        }
+        //thl@SHoP need to revert some of the mesh changes if we are re-exporting them with mirrored geometries
+        PostprocessMesh(rhinoMesh);
       }
 
       return primitives;
