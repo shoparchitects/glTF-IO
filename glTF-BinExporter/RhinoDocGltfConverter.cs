@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Media.Imaging;
 using System.Xml.Linq;
 using glTFLoader.Schema;
 using Newtonsoft.Json;
@@ -621,7 +622,8 @@ namespace glTF_BinExporter
                 var blockDefinition = instanceObject.InstanceDefinition;
 
                 Node nodeBlockInstance = createBlockNode(getBlockInstanceName(instanceObject),
-                                                                parentReflection * instanceObject.InstanceXform,
+                                                                instanceObject.InstanceXform,
+                                                                parentReflection,
                                                                 out Transform relection,
                                                                 -1,
                                                                  new ExtrasSHoP
@@ -688,24 +690,9 @@ namespace glTF_BinExporter
             return name;
         }
 
-        Node createBlockNode(string name, Transform trans, out Transform reflection, int child = -1, ExtrasSHoP extras = null)
+        bool isMirrored(Transform trans, Vector3d diag)
         {
-            reflection = Transform.Identity;
-            var mirrored = false; // orientation preserved = ! mirrored
-            Vector3d translation, diag;
-            Transform rotation, orth;
-            Quaternion quaternion = Quaternion.Identity;
-
-            trans.DecomposeAffine(out translation, out rotation, out orth, out diag);
-            var rotationMatrix = Transform2Matrix(rotation);
-            quaternion = Matrix2Quaternion(rotationMatrix);
-
-
-
-            var rigidType = trans.RigidType;//scaling or not (not sure when orientation reverseing happens)
-
-            /*if (rigidType == TransformRigidType.Rigid)
-                diag = new Vector3d(1, 1, 1);*/
+            bool mirrored = false;
 
             var simType = trans.SimilarityType;//mirror or not -1: orientationReversing, 0: Notsimilarity, 1: orientationPreserviing
                                                //NotSimilarity takes precedence over orientationReversing, meaning if you mirror and "deform"(NU scale) then it shows NotSimilarity
@@ -717,11 +704,36 @@ namespace glTF_BinExporter
             }
             else if (simType == TransformSimilarityType.NotSimilarity)
             {
-                if(diag.X < 0 || diag.Y < 0 || diag.Z < 0)//now check if there's any negative sign in the diagonal to see any mirroring
+                if (diag.X < 0 || diag.Y < 0 || diag.Z < 0)//now check if there's any negative sign in the diagonal to see any mirroring
                 {
                     mirrored = true;
                 }
             }
+
+            return mirrored;
+        }
+
+        Node createBlockNode(string name, Transform trans, Transform parentReflection, out Transform reflection, int child = -1, ExtrasSHoP extras = null)
+        {
+            //CHECKING SELF START
+            reflection = Transform.Identity;
+            //var mirrored = false; // orientation preserved = ! mirrored
+            Vector3d translation, diag;
+            Transform rotation, orth;
+            Quaternion quaternion = Quaternion.Identity;
+
+            trans.DecomposeAffine(out translation, out rotation, out orth, out diag);
+            /*var rotationMatrix = Transform2Matrix(rotation);
+            quaternion = Matrix2Quaternion(rotationMatrix);*/
+
+
+
+            /*var rigidType = trans.RigidType;//scaling or not (not sure when orientation reverseing happens)
+
+            *//*if (rigidType == TransformRigidType.Rigid)
+                diag = new Vector3d(1, 1, 1);*/
+
+            var mirrored = isMirrored(trans, diag);
 
             if(mirrored)
             {
@@ -734,7 +746,13 @@ namespace glTF_BinExporter
                 rotation.TryGetInverse(out var inverseRotation);//Getting the inverse of the rotation(including reflection)
                 reflection = transformation * inverseRotation;//Trying to get the matrix which rotation can multiply to get to the rotation with reflection
             }
+            //CHECKING SELF END
 
+            //CHECKING PARENT * SELF START
+            trans *= parentReflection;
+            trans.DecomposeAffine(out translation, out rotation, out orth, out diag);
+            var rotationMatrix = Transform2Matrix(rotation);
+            quaternion = Matrix2Quaternion(rotationMatrix);
 
             if (options.MapRhinoZToGltfY)
             {
@@ -743,6 +761,9 @@ namespace glTF_BinExporter
                                                                                                      //stackoverflow post - https://stackoverflow.com/questions/16099979/can-i-switch-x-y-z-in-a-quaternion
                 diag = new Vector3d(diag.X, diag.Z, diag.Y);
             }
+
+            mirrored = isMirrored(trans, diag);
+
 
             //commented out for now to test if the rest of the logic is working
             if (options.FlipMirroredNormals && mirrored)
