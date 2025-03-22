@@ -718,11 +718,11 @@ namespace glTF_BinExporter
             //CHECKING SELF START
             reflection = Transform.Identity;
             //var mirrored = false; // orientation preserved = ! mirrored
-            Vector3d translation, diag;
+            Vector3d translationWparent, diag;
             Transform rotation, orth;
             Quaternion quaternion = Quaternion.Identity;
 
-            trans.DecomposeAffine(out translation, out rotation, out orth, out diag);
+            trans.DecomposeAffine(out translationWparent, out rotation, out orth, out diag);
             /*var rotationMatrix = Transform2Matrix(rotation);
             quaternion = Matrix2Quaternion(rotationMatrix);*/
 
@@ -750,19 +750,19 @@ namespace glTF_BinExporter
 
             //CHECKING PARENT * SELF START
             trans = parentReflection * trans;//Matrix multiplication is not communitive so can't reverse the order!!
-            trans.DecomposeAffine(out translation, out rotation, out orth, out diag);
+            trans.DecomposeAffine(out translationWparent, out rotation, out orth, out var diagWparent);
             var rotationMatrix = Transform2Matrix(rotation);
             quaternion = Matrix2Quaternion(rotationMatrix);
 
             if (options.MapRhinoZToGltfY)
             {
-                translation.Transform(Constants.ZtoYUp);
+                translationWparent.Transform(Constants.ZtoYUp);
                 quaternion = new Quaternion(quaternion.A, quaternion.B, quaternion.D, -quaternion.C);//half empirical half
                                                                                                      //stackoverflow post - https://stackoverflow.com/questions/16099979/can-i-switch-x-y-z-in-a-quaternion
                 diag = new Vector3d(diag.X, diag.Z, diag.Y);
             }
 
-            mirrored = isMirrored(trans, diag);
+            //mirrored = isMirrored(trans, diagWparent);
             //CHECKING PARENT * SELF END
 
 
@@ -772,7 +772,7 @@ namespace glTF_BinExporter
             Node node = new glTFLoader.Schema.Node()
             {
                 Name = name,
-                Translation = new float[3] { (float)translation.X, (float)translation.Y, (float)translation.Z },
+                Translation = new float[3] { (float)translationWparent.X, (float)translationWparent.Y, (float)translationWparent.Z },
                 Rotation = new float[4] { (float)quaternion.B, (float)quaternion.C, (float)quaternion.D, (float)quaternion.A },
                 Scale = new float[3] { (float)diag.X, (float)diag.Y, (float)diag.Z}
             };
