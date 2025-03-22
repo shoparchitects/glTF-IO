@@ -749,7 +749,7 @@ namespace glTF_BinExporter
             //CHECKING SELF END
 
             //CHECKING PARENT * SELF START
-            trans *= parentReflection;
+            trans = parentReflection * trans;//Matrix multiplication is not communitive so can't reverse the order!!
             trans.DecomposeAffine(out translation, out rotation, out orth, out diag);
             var rotationMatrix = Transform2Matrix(rotation);
             quaternion = Matrix2Quaternion(rotationMatrix);
@@ -763,9 +763,9 @@ namespace glTF_BinExporter
             }
 
             mirrored = isMirrored(trans, diag);
+            //CHECKING PARENT * SELF END
 
 
-            //commented out for now to test if the rest of the logic is working
             if (options.FlipMirroredNormals && mirrored)
                 diag *= -1;
 
