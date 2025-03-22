@@ -19,7 +19,7 @@ namespace glTF_BinExporter
         public Rhino.Render.RenderMaterial RenderMaterial = null;
         public Rhino.DocObjects.RhinoObject Object = null;
         //thl@SHoP
-        public bool Mirrored = false;
+        public Transform Reflection = Transform.Identity;
     }
 
     class RhinoDocGltfConverter
@@ -144,7 +144,7 @@ namespace glTF_BinExporter
 
                 //thl@SHoP
                 //this is where the magic happens - looking up previous meshes to see if we can instance/link to an existing mesh so we don't create a repetative mesh
-                bool needsLookupMirroredMeshID = options.FlipMirroredNormals && exportData.Mirrored;
+                bool needsLookupMirroredMeshID = options.FlipMirroredNormals && exportData.Reflection != Transform.Identity;
 
                 if (geo2meshIndex.ContainsKey(ogGeometry.Id))
                 {
@@ -171,14 +171,15 @@ namespace glTF_BinExporter
                     //This is to take care of scenarios where flipped geometry is encountered before encountering original geometry
                     if (needsLookupMirroredMeshID) //making sure we record the original geometry in the meshes first
                     {
-                        exportData.Mirrored = false;//first make it not mirrored
+                        var tempInverse = exportData.Reflection;
+                        exportData.Reflection = Transform.Identity;//first make it not mirrored
 
                         //ADDING ORIGINAL
                         meshConverter = new RhinoMeshGltfConverter(exportData, materialIndex, options, binary, dummy, binaryBuffer);
                         meshIndex = meshConverter.AddMesh();
                         geo2meshIndex.Add(ogGeometry.Id, meshIndex);
 
-                        exportData.Mirrored = true;//flip it back to mirrored afterwards
+                        exportData.Reflection = tempInverse;//flip it back to mirrored afterwards
 
                         //ADDING MIRRORED
                         //Now adding the mirrored Meshes
@@ -482,7 +483,7 @@ namespace glTF_BinExporter
 
             foreach (var rhinoObject in rhinoObjects)
             {
-                var nodeIndex = createBlockNodesRecursive(rhinoObject,null,false,processedObjects);
+                var nodeIndex = createBlockNodesRecursive(rhinoObject,null,Transform.Identity,processedObjects);
                 /*if(nodeIndex >= 0)
                     RootBlockInstanceNodeIndices.Add(nodeIndex);*/
                 
@@ -609,7 +610,7 @@ namespace glTF_BinExporter
         #region SHoP Custom
         //thl @ SHoP
         //the return int list is the indices of the immediate children nested block definition node
-        private int createBlockNodesRecursive(RhinoObject rhinoObject, RhinoObject parent, bool parentMirrored, List<ObjectExportData> processedObjects)
+        private int createBlockNodesRecursive(RhinoObject rhinoObject, RhinoObject parent, Transform parentReflection, List<ObjectExportData> processedObjects)
         {
             if(parent != null)
                 EmbeddedObjects.Add(rhinoObject);
@@ -620,8 +621,8 @@ namespace glTF_BinExporter
                 var blockDefinition = instanceObject.InstanceDefinition;
 
                 Node nodeBlockInstance = createBlockNode(getBlockInstanceName(instanceObject),
-                                                                instanceObject.InstanceXform,
-                                                                out bool mirrored,
+                                                                parentReflection * instanceObject.InstanceXform,
+                                                                out Transform relection,
                                                                 -1,
                                                                  new ExtrasSHoP
                                                                  {
@@ -640,7 +641,7 @@ namespace glTF_BinExporter
                 {
                     Rhino.DocObjects.RhinoObject objectInsideBlock = instanceObject.InstanceDefinition.Object(i);
 
-                    var nodeIndex = createBlockNodesRecursive(objectInsideBlock, instanceObject, mirrored ^ parentMirrored, processedObjects); //using logical XOR for mirrored and parent mirrored because if both are true then its no longer mirroed
+                    var nodeIndex = createBlockNodesRecursive(objectInsideBlock, instanceObject, parentReflection * relection , processedObjects); //using logical XOR for mirrored and parent mirrored because if both are true then its no longer mirroed
 
                     if(nodeIndex >= 0)
                         children.Add(nodeIndex);
@@ -658,7 +659,7 @@ namespace glTF_BinExporter
                     Object = rhinoObject,
                     //Transform = Transform.Identity,
                     RenderMaterial = GetObjectMaterial(rhinoObject),
-                    Mirrored = parentMirrored
+                    Reflection = parentReflection
                 };
 
                 if(parent != null)                //we also need to add to the dictionary to track to 
@@ -687,9 +688,10 @@ namespace glTF_BinExporter
             return name;
         }
 
-        Node createBlockNode(string name, Transform trans, out bool mirrored, int child = -1, ExtrasSHoP extras = null)
+        Node createBlockNode(string name, Transform trans, out Transform reflection, int child = -1, ExtrasSHoP extras = null)
         {
-            mirrored = false; // orientation preserved = ! mirrored
+            reflection = Transform.Identity;
+            var mirrored = false; // orientation preserved = ! mirrored
             Vector3d translation, diag;
             Transform rotation, orth;
             Quaternion quaternion = Quaternion.Identity;
@@ -697,6 +699,8 @@ namespace glTF_BinExporter
             trans.DecomposeAffine(out translation, out rotation, out orth, out diag);
             var rotationMatrix = Transform2Matrix(rotation);
             quaternion = Matrix2Quaternion(rotationMatrix);
+
+
 
             var rigidType = trans.RigidType;//scaling or not (not sure when orientation reverseing happens)
 
@@ -719,6 +723,18 @@ namespace glTF_BinExporter
                 }
             }
 
+            if(mirrored)
+            {
+                //Let's solve Rotation * X = Transformation (rotation + reflection)
+                // X = Transformation * Inverse Rotation
+                //rotation then does not account for reflection
+                var transformation = trans.Clone();
+                transformation.Linearize(); //getting rid of translation, leaving only the rotation(including reflection)
+
+                rotation.TryGetInverse(out var inverseRotation);//Getting the inverse of the rotation(including reflection)
+                reflection = transformation * inverseRotation;//Trying to get the matrix which rotation can multiply to get to the rotation with reflection
+            }
+
 
             if (options.MapRhinoZToGltfY)
             {
@@ -729,8 +745,8 @@ namespace glTF_BinExporter
             }
 
             //commented out for now to test if the rest of the logic is working
-            /*if (options.FlipMirroredNormals && mirrored)
-                diag *= -1;*/
+            if (options.FlipMirroredNormals && mirrored)
+                diag *= -1;
 
             Node node = new glTFLoader.Schema.Node()
             {

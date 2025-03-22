@@ -43,7 +43,7 @@ namespace glTF_BinExporter
       };
 
       //thl@SHoP
-      if (options.FlipMirroredNormals && exportData.Mirrored)
+      if (options.FlipMirroredNormals && exportData.Reflection != Transform.Identity)
         mesh.Name += "_MRD";
 
       return dummy.Meshes.AddAndReturnIndex(mesh);
@@ -62,9 +62,9 @@ namespace glTF_BinExporter
 
       //thl@SHoP
       //this step ensures no normals issues should show up for a mirrored mesh
-      if(options.FlipMirroredNormals && exportData.Mirrored)
+      if(options.FlipMirroredNormals && exportData.Reflection != Transform.Identity)
       {
-        //rhinoMesh.Transform(Constants.MirrorXYZ);
+        rhinoMesh.Transform(exportData.Reflection);
         rhinoMesh.Flip(true, true, true);
       }
 
@@ -78,9 +78,10 @@ namespace glTF_BinExporter
             rhinoMesh.Transform(Constants.ZtoYInverse);
         }
 
-        if (options.FlipMirroredNormals && exportData.Mirrored)
+        if (options.FlipMirroredNormals && exportData.Reflection != Transform.Identity)
         {
-            //rhinoMesh.Transform(Constants.MirrorXYZ);
+            exportData.Reflection.TryGetInverse(out var inverse);
+            rhinoMesh.Transform(inverse);
             rhinoMesh.Flip(true, true, true);
         }
     }
