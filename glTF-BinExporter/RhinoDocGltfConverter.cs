@@ -737,14 +737,17 @@ namespace glTF_BinExporter
 
             if(mirrored)
             {
-                //Let's solve Rotation * X = Transformation (rotation + reflection)
-                // X = Transformation * Inverse Rotation
+                //Let's solve Rotation * Reflection * Scaling = Transformation
+                // Reflection * Scaling = Transformation * Inverse Rotation
+                // Reflection = Transformation * Inverse Rotation * Inverse Scaling
                 //rotation then does not account for reflection
                 var transformation = trans.Clone();
                 transformation.Linearize(); //getting rid of translation, leaving only the rotation(including reflection)
 
                 rotation.TryGetInverse(out var inverseRotation);//Getting the inverse of the rotation(including reflection)
-                reflection = transformation * inverseRotation;//Trying to get the matrix which rotation can multiply to get to the rotation with reflection
+                var scaleMatrix = Transform.Diagonal(-diag); //flipping the sign because scaling we don't want to take out the reflection thru scaling
+                scaleMatrix.TryGetInverse(out var inverseScaling);
+                reflection = transformation * inverseRotation * inverseScaling;//Trying to get the matrix which rotation can multiply to get to the rotation with reflection
             }
             //CHECKING SELF END
 
