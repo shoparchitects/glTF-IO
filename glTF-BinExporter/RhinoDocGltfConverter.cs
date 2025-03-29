@@ -3,10 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Markup;
 using System.Windows.Media.Imaging;
 using System.Xml.Linq;
 using glTFLoader.Schema;
-using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Rhino;
 using Rhino.DocObjects;
 using Rhino.Geometry;
@@ -620,18 +621,37 @@ namespace glTF_BinExporter
             if (rhinoObject is Rhino.DocObjects.InstanceObject instanceObject)//if a block
             {
                 var blockDefinition = instanceObject.InstanceDefinition;
+                var instanceName = getBlockInstanceName(instanceObject);
+                ExtrasSHoP extras = new ExtrasSHoP
+                {
+                    instanceOf = blockDefinition.Name,
+                    instanceId = BlockDefToCount[blockDefinition]
+                };
 
-                Node nodeBlockInstance = createBlockNode(getBlockInstanceName(instanceObject),
-                                                                instanceObject.InstanceXform,
-                                                                parentReflection,
-                                                                out Transform relection,
-                                                                -1,
-                                                                 new ExtrasSHoP
-                                                                 {
-                                                                     instanceOf = blockDefinition.Name,
-                                                                     instanceId = BlockDefToCount[blockDefinition]
-                                                                 });
+                if(instanceObject.Attributes.UserStringCount > 0)
+                {
+                    
+                    StringBuilder stringBuilder = new StringBuilder();
+                    stringBuilder.Append("{");
 
+                    var collection = instanceObject.Attributes.GetUserStrings();
+                    for (int i = 0; i < collection.Count; i++)
+                    {
+                        stringBuilder.Append($"\"{collection.GetKey(i)}\" :");
+                        stringBuilder.Append($"[\"{collection.Get(i)}\"],");
+                    }
+
+                    stringBuilder.Append("}");
+                    extras.tags = JObject.Parse(stringBuilder.ToString());
+                }
+
+                Node nodeBlockInstance = createBlockNode(instanceName,
+                                                        instanceObject.InstanceXform,
+                                                        parentReflection,
+                                                        out Transform relection,
+                                                        -1,
+                                                        extras);
+                
                 var nodeIndex_BlockInstance = dummy.Nodes.AddAndReturnIndex(nodeBlockInstance);
                 if(parent == null)
                     AddBlockNodeToScene(nodeIndex_BlockInstance, rhinoObject);
@@ -881,8 +901,9 @@ namespace glTF_BinExporter
         {
             public string instanceOf;
             public int instanceId;
-
+            public dynamic tags;
         }
+
 
         #endregion
 
