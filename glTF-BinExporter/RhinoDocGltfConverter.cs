@@ -7,6 +7,7 @@ using System.Windows.Markup;
 using System.Windows.Media.Imaging;
 using System.Xml.Linq;
 using glTFLoader.Schema;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Rhino;
 using Rhino.DocObjects;
@@ -102,12 +103,6 @@ namespace glTF_BinExporter
             dummy.ExtensionsUsed.Add(glTFExtensions.KHR_materials_ior.Tag);
             dummy.ExtensionsUsed.Add(glTFExtensions.KHR_materials_specular.Tag);
 
-            /*if (options.MapRhinoZToGltfY)
-            {
-                Transform axisChange = Transform.Rotation(-Math.PI / 2, Vector3d.XAxis, Point3d.Origin);
-                foreach (Rhino.DocObjects.RhinoObject rhinoObject in objects)
-                    doc.Objects.Transform(rhinoObject, axisChange, true);
-            }*/
 
             IEnumerable<Rhino.DocObjects.RhinoObject> pointClouds = objects.Where(x => x.ObjectType == Rhino.DocObjects.ObjectType.PointSet);
 
@@ -486,8 +481,6 @@ namespace glTF_BinExporter
             foreach (var rhinoObject in rhinoObjects)
             {
                 var nodeIndex = createBlockNodesRecursive(rhinoObject,null,Transform.Identity,processedObjects);
-                /*if(nodeIndex >= 0)
-                    RootBlockInstanceNodeIndices.Add(nodeIndex);*/
                 
             }
 
@@ -529,23 +522,6 @@ namespace glTF_BinExporter
                     }
 
                     List <Rhino.Geometry.Mesh> meshes = new List<Rhino.Geometry.Mesh>(item.Object.GetMeshes(Rhino.Geometry.MeshType.Render));
-                    //thl@SHoP
-                    /*List<Rhino.Geometry.Mesh> meshes;
-                    if (item.Mirrored && options.FlipMirroredNormals)
-                    {
-                        meshes = new List<Rhino.Geometry.Mesh>();
-                        var tempMeshes = item.Object.GetMeshes(Rhino.Geometry.MeshType.Render);
-                        foreach (var mesh in tempMeshes)
-                        {
-                            var newMesh = new Rhino.Geometry.Mesh();
-                            newMesh.CopyFrom(mesh);
-                            meshes.Add(newMesh);
-                        }
-                    }
-                    else
-                    {
-                        meshes = new List<Rhino.Geometry.Mesh>(item.Object.GetMeshes(Rhino.Geometry.MeshType.Render));
-                    }*/
 
 
                     foreach (Rhino.Geometry.Mesh mesh in meshes)
@@ -637,8 +613,11 @@ namespace glTF_BinExporter
                     var collection = instanceObject.Attributes.GetUserStrings();
                     for (int i = 0; i < collection.Count; i++)
                     {
-                        stringBuilder.Append($"\"{collection.GetKey(i)}\" :");
-                        stringBuilder.Append($"[\"{collection.Get(i)}\"],");
+                        var tag = collection.GetKey(i);
+                        var value = collection.Get(i);
+                        string[] values = value.Split(',');
+                        stringBuilder.Append($"\"{tag}\" :");
+                        stringBuilder.Append($"{JsonConvert.SerializeObject(values)},");
                     }
 
                     stringBuilder.Append("}");
