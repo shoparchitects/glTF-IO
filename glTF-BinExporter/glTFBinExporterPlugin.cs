@@ -251,7 +251,7 @@ namespace glTF_BinExporter
             set => Instance.Settings.SetBool(ExportLayersDialogKey, value);
         }
 
-        private const string FlipMirroredNormalsDialogKey = "ExportLayers";
+        private const string FlipMirroredNormalsDialogKey = "FlipMirroredNormals";
         public const bool FlipMirroredNormalsDialogDefault = true;
 
         public static bool FlipMirroredNormals
@@ -269,6 +269,7 @@ namespace glTF_BinExporter
                 UseDisplayColorForUnsetMaterials = UseDisplayColorForUnsetMaterials,
                 //thl@SHoP
                 FlipMirroredNormals = FlipMirroredNormals,
+                ExportLayers = ExportLayers,
 
                 SubDExportMode = SubDExportMode,
                 SubDLevel = SubDLevel,
