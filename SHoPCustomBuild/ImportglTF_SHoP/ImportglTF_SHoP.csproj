@@ -8,8 +8,8 @@
   <PropertyGroup>
     <TargetFrameworks Condition=" '$(RhinoVersion)'=='8' "> net7.0-windows</TargetFrameworks>
     <Version>1.0</Version>
-    <Title>ImportglTFThirdPartyBuild</Title>
-    <Description>Description of ImportglTFThirdPartyBuild</Description>
+    <Title>ImportglTF_SHoP</Title>
+    <Description>Custom glTF importer by SHoP</Description>
     <TargetExt>.rhp</TargetExt>
     <UseWpf>true</UseWpf>
   </PropertyGroup>
@@ -17,8 +17,8 @@
 
     <TargetFrameworks Condition=" '$(RhinoVersion)'=='7' "> net48-windows</TargetFrameworks>
     <Version>1.0</Version>
-    <Title>ImportglTFThirdPartyBuild</Title>
-    <Description>Description of ImportglTFThirdPartyBuild</Description>
+    <Title>ImportglTF_SHoP</Title>
+    <Description>Custom glTF importer by SHoP</Description>
     <TargetExt>.rhp</TargetExt>
     <UseWpf>true</UseWpf>
   </PropertyGroup>
@@ -44,7 +44,7 @@
   </ItemGroup>
   
   <ItemGroup>
-    <ProjectReference Include="..\glTFExtensionThirdPartyBuild\glTFExtensionThirdPartyBuild.csproj" />
+    <ProjectReference Include="..\glTFExtension_SHoP\glTFExtension_SHoP.csproj" />
   </ItemGroup>
   
   <PropertyGroup Condition="$(Configuration) == 'Debug' AND $([MSBuild]::IsOSPlatform(Windows))">

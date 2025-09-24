@@ -8,7 +8,7 @@
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>glTFExtensions</RootNamespace>
-    <AssemblyName>glTFExtensionThirdPartyBuild</AssemblyName>
+    <AssemblyName>glTFExtension_SHoP</AssemblyName>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>

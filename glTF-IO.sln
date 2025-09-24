@@ -3,11 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.4.33205.214
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ExportglTFThirdPartyBuild", "ThirdPartyBuild\ExportglTFThirdPartyBuild\ExportglTFThirdPartyBuild.csproj", "{42036909-A1B2-4AB1-BE8C-91FFCD49C55D}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ExportglTF_SHoP", "SHoPCustomBuild\ExportglTF_SHoP\ExportglTF_SHoP.csproj", "{42036909-A1B2-4AB1-BE8C-91FFCD49C55D}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ImportglTFThirdPartyBuild", "ThirdPartyBuild\ImportglTFThirdPartyBuild\ImportglTFThirdPartyBuild.csproj", "{585774CF-6B26-41EE-84FD-5FB68928FB3D}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ImportglTF_SHoP", "SHoPCustomBuild\ImportglTF_SHoP\ImportglTF_SHoP.csproj", "{585774CF-6B26-41EE-84FD-5FB68928FB3D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "glTFExtensionThirdPartyBuild", "ThirdPartyBuild\glTFExtensionThirdPartyBuild\glTFExtensionThirdPartyBuild.csproj", "{CEB4C2BC-FC3A-4262-95F8-D481F5A1C730}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "glTFExtension_SHoP", "SHoPCustomBuild\glTFExtension_SHoP\glTFExtension_SHoP.csproj", "{CEB4C2BC-FC3A-4262-95F8-D481F5A1C730}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
