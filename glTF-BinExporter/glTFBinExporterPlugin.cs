@@ -135,7 +135,7 @@ namespace glTF_BinExporter
         }
 
         private const string useDisplayColorForUnsetMaterialsKey = "UseDisplayColorForUnsetMaterials";
-        public const bool UseDisplayColorForUnsetMaterialsDefault = true;
+        public const bool UseDisplayColorForUnsetMaterialsDefault = false;
 
         public static bool UseDisplayColorForUnsetMaterials
         {
