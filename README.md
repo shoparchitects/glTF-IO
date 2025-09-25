@@ -25,6 +25,8 @@ Contributions and bug reports are welcome.
 
 [Ali Tehami](https://github.com/alitehami)
 
+[Tim Li](https://github.com/timera)
+
 # License
 MIT but please make PRs if you make improvements.
 
