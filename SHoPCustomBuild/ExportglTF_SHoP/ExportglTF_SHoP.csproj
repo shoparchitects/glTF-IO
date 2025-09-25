@@ -7,7 +7,7 @@
 
   <PropertyGroup>
     <TargetFrameworks Condition=" '$(RhinoVersion)'=='8' "> net7.0-windows</TargetFrameworks>
-    <Version>1.0</Version>
+    <Version>0.1.0</Version>
     <Title>ExportglTF_SHoP</Title>
     <Description>Custom GglTF exporter by SHoP</Description>
     <TargetExt>.rhp</TargetExt>
@@ -16,7 +16,7 @@
   <PropertyGroup>
 
     <TargetFrameworks Condition=" '$(RhinoVersion)'=='7' "> net48-windows</TargetFrameworks>
-    <Version>1.0</Version>
+    <Version>0.1.0</Version>
     <Title>ExportglTF_SHoP</Title>
     <Description>Custom glTF exporter by SHoP</Description>
     <TargetExt>.rhp</TargetExt>

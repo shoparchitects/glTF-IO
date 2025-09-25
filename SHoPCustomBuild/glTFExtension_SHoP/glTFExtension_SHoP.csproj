@@ -36,6 +36,7 @@
     <Compile Include="..\..\glTFExtensions\KHR_materials_ior.cs" Link="KHR_materials_ior.cs" />
     <Compile Include="..\..\glTFExtensions\KHR_materials_specular.cs" Link="KHR_materials_specular.cs" />
     <Compile Include="..\..\glTFExtensions\KHR_materials_transmission.cs" Link="KHR_materials_transmission.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="glTFLoader, Version=1.1.4.0, Culture=neutral, processorArchitecture=MSIL">
