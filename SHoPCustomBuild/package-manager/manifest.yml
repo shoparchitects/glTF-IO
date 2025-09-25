@@ -1,0 +1,18 @@
+---
+name: glTF-Exporter-by-SHoP
+version: 0.1.0.0
+authors:
+- Aske Doerge
+- Joshua Kennedy
+- Peter Krattenmacher
+- Ali Tehami
+- Tim Li
+description: Import and export plugins for .gltf and .glb files.
+url: https://github.com/shoparchitects/glTF-IO/tree/SHoPCustomExporter
+keywords:
+- glTF
+- glb
+- web
+- export
+- import
+platform: win
