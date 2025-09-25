@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <RhinoVersion>7</RhinoVersion>
+    <RhinoVersion>8</RhinoVersion>
     <Platforms>AnyCPU;x64</Platforms>
     <!-- change for 7, 8 etc. -->
   </PropertyGroup>
@@ -43,7 +43,7 @@
   
   <ItemGroup>
     <PackageReference Include="glTF2Loader" Version="1.1.4-alpha" />
-    <PackageReference Condition=" '$(RhinoVersion)'=='8' " Include="RhinoCommon" Version="8.15.25019.13001" IncludeAssets="compile;build" />
+    <PackageReference Condition=" '$(RhinoVersion)'=='8' " Include="RhinoCommon" Version="8.23.25251.13001" IncludeAssets="compile;build" />
     <PackageReference Condition=" '$(RhinoVersion)'=='7' " Include="RhinoCommon" Version="7.37.24107.15001" IncludeAssets="compile;build" />
   </ItemGroup>
   
@@ -51,8 +51,14 @@
     <ProjectReference Include="..\glTFExtension_SHoP\glTFExtension_SHoP.csproj" />
   </ItemGroup>
   
-  <PropertyGroup Condition="$(Configuration) == 'Debug' AND $([MSBuild]::IsOSPlatform(Windows))">
+  <PropertyGroup Condition="$(Configuration) == 'Debug' AND $([MSBuild]::IsOSPlatform(Windows)) AND '$(RhinoVersion)'=='7'">
     <StartProgram>C:\Program Files\Rhino 7\System\Rhino.exe</StartProgram>
+    <StartArguments></StartArguments>
+    <StartAction>Program</StartAction>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="$(Configuration) == 'Debug' AND $([MSBuild]::IsOSPlatform(Windows)) AND '$(RhinoVersion)'=='8'">
+    <StartProgram>C:\Program Files\Rhino 8\System\Rhino.exe</StartProgram>
     <StartArguments></StartArguments>
     <StartAction>Program</StartAction>
   </PropertyGroup>
