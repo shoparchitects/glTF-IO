@@ -29,5 +29,6 @@ namespace glTF_BinExporter
         public bool ExportLayers = glTFBinExporterPlugin.ExportLayers;
         //thl@SHoP
         public bool FlipMirroredNormals = glTFBinExporterPlugin.FlipMirroredNormals;
+        public float ScaleFactor = glTFBinExporterPlugin.ScaleFactor;
     }
 }

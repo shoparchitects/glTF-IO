@@ -260,6 +260,11 @@ namespace glTF_BinExporter
             set => Instance.Settings.SetBool(FlipMirroredNormalsDialogKey, value);
         }
 
+        public static float ScaleFactor
+        {
+            get => GlTFUtils.UnitConversionFactor;
+        }
+
         public static glTFExportOptions GetSavedOptions()
         {
             return new glTFExportOptions()
@@ -269,6 +274,7 @@ namespace glTF_BinExporter
                 UseDisplayColorForUnsetMaterials = UseDisplayColorForUnsetMaterials,
                 //thl@SHoP
                 FlipMirroredNormals = FlipMirroredNormals,
+                ScaleFactor = ScaleFactor,
                 ExportLayers = ExportLayers,
 
                 SubDExportMode = SubDExportMode,

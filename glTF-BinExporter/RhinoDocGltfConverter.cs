@@ -623,13 +623,22 @@ namespace glTF_BinExporter
                     stringBuilder.Append("}");
                     extras.tags = JObject.Parse(stringBuilder.ToString());
                 }
+                Node nodeBlockInstance = null;
 
-                Node nodeBlockInstance = createBlockNode(instanceName,
+                if (parent == null)//TODO need logic to scale based on units to the translation
+                    nodeBlockInstance = createBlockNode(instanceName,
                                                         instanceObject.InstanceXform,
                                                         parentReflection,
                                                         out Transform relection,
                                                         -1,
                                                         extras);
+                else
+                    nodeBlockInstance = createBlockNode(instanceName,
+                                                            instanceObject.InstanceXform,
+                                                            parentReflection,
+                                                            out Transform relection,
+                                                            -1,
+                                                            extras);
                 
                 var nodeIndex_BlockInstance = dummy.Nodes.AddAndReturnIndex(nodeBlockInstance);
                 if(parent == null)

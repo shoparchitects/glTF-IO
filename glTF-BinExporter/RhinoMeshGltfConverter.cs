@@ -68,7 +68,10 @@ namespace glTF_BinExporter
         rhinoMesh.Flip(true, true, true);
       }
 
-      rhinoMesh.TextureCoordinates.ReverseTextureCoordinates(1);
+        rhinoMesh.Scale(options.ScaleFactor); //thl@SHoP apply scale factor here so normals are correct
+
+
+        rhinoMesh.TextureCoordinates.ReverseTextureCoordinates(1);
     }
 
     private void PostprocessMesh(Mesh rhinoMesh)
@@ -84,6 +87,9 @@ namespace glTF_BinExporter
             rhinoMesh.Transform(inverse);
             rhinoMesh.Flip(true, true, true);
         }
+
+            rhinoMesh.Scale(1 / options.ScaleFactor); //thl@SHoP apply scale factor here so normals are correct
+
     }
 
     private List<glTFLoader.Schema.MeshPrimitive> GetPrimitives()

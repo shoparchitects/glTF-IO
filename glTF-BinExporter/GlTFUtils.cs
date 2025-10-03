@@ -68,5 +68,18 @@ namespace glTF_BinExporter
                 point.Y,
             };
         }
+
+        public static float UnitConversionFactor
+        {
+            get
+            {
+                var curUnit = Rhino.RhinoDoc.ActiveDoc.ModelUnitSystem;
+                if (curUnit == UnitSystem.Meters)
+                    return 1;
+                else
+                    return (float)Rhino.RhinoMath.UnitScale(curUnit, UnitSystem.Meters);
+            }
+
+        }
     }
 }
