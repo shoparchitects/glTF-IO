@@ -624,22 +624,22 @@ namespace glTF_BinExporter
                     extras.tags = JObject.Parse(stringBuilder.ToString());
                 }
                 Node nodeBlockInstance = null;
+                Transform scaledWunitsTransform = instanceObject.InstanceXform;
 
-                if (parent == null)//TODO need logic to scale based on units to the translation
-                    nodeBlockInstance = createBlockNode(instanceName,
-                                                        instanceObject.InstanceXform,
-                                                        parentReflection,
-                                                        out Transform relection,
-                                                        -1,
-                                                        extras);
-                else
-                    nodeBlockInstance = createBlockNode(instanceName,
-                                                            instanceObject.InstanceXform,
-                                                            parentReflection,
-                                                            out Transform relection,
-                                                            -1,
-                                                            extras);
-                
+                if (parent == null)//TODO need to scale based on unit conversion the translation part of the transform only at the root level
+                {
+                    scaledWunitsTransform.M03 *= options.ScaleFactor;
+                    scaledWunitsTransform.M13 *= options.ScaleFactor;
+                    scaledWunitsTransform.M23 *= options.ScaleFactor;
+                }
+
+                nodeBlockInstance = createBlockNode(instanceName,
+                                                    scaledWunitsTransform,
+                                                    parentReflection,
+                                                    out Transform reflection,
+                                                    -1,
+                                                    extras);
+
                 var nodeIndex_BlockInstance = dummy.Nodes.AddAndReturnIndex(nodeBlockInstance);
                 if(parent == null)
                     AddBlockNodeToScene(nodeIndex_BlockInstance, rhinoObject);
@@ -651,7 +651,7 @@ namespace glTF_BinExporter
                 {
                     Rhino.DocObjects.RhinoObject objectInsideBlock = instanceObject.InstanceDefinition.Object(i);
 
-                    var nodeIndex = createBlockNodesRecursive(objectInsideBlock, instanceObject, parentReflection * relection , processedObjects); //using logical XOR for mirrored and parent mirrored because if both are true then its no longer mirroed
+                    var nodeIndex = createBlockNodesRecursive(objectInsideBlock, instanceObject, parentReflection * reflection , processedObjects); //using logical XOR for mirrored and parent mirrored because if both are true then its no longer mirroed
 
                     if(nodeIndex >= 0)
                         children.Add(nodeIndex);
