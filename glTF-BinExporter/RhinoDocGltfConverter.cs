@@ -626,12 +626,10 @@ namespace glTF_BinExporter
                 Node nodeBlockInstance = null;
                 Transform scaledWunitsTransform = instanceObject.InstanceXform;
 
-                if (parent == null)//TODO need to scale based on unit conversion the translation part of the transform only at the root level
-                {
-                    scaledWunitsTransform.M03 *= options.ScaleFactor;
-                    scaledWunitsTransform.M13 *= options.ScaleFactor;
-                    scaledWunitsTransform.M23 *= options.ScaleFactor;
-                }
+                //scaling based on unit conversion the translation part of the transform only at the root level
+                scaledWunitsTransform.M03 *= options.ScaleFactor;
+                scaledWunitsTransform.M13 *= options.ScaleFactor;
+                scaledWunitsTransform.M23 *= options.ScaleFactor;
 
                 nodeBlockInstance = createBlockNode(instanceName,
                                                     scaledWunitsTransform,
