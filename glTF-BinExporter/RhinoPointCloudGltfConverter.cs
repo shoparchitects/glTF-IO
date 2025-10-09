@@ -70,6 +70,8 @@ namespace glTF_BinExporter
       glTFLoader.Schema.Mesh mesh = new glTFLoader.Schema.Mesh()
       {
         Primitives = new glTFLoader.Schema.MeshPrimitive[] { primitive },
+        Name = GlTFUtils.SanitizeName(rhinoObject.Name)//thl@SHoP //converting anything non-ASCII to ?
+
       };
 
       return dummy.Meshes.AddAndReturnIndex(mesh);
@@ -146,19 +148,20 @@ namespace glTF_BinExporter
       max = new Rhino.Geometry.Point3d(Double.NegativeInfinity, Double.NegativeInfinity, Double.NegativeInfinity);
 
       List<float> floats = new List<float>(points.Length * 3);
-
+      var scaleFactor = options.ScaleFactor; //thl@SHoP apply scale factor here to match units
       foreach (Rhino.Geometry.Point3d vertex in points)
       {
-        floats.AddRange(new float[] { (float)vertex.X, (float)vertex.Y, (float)vertex.Z });
+        var scaledVertex = new Rhino.Geometry.Point3d(vertex.X * scaleFactor, vertex.Y * scaleFactor, vertex.Z * scaleFactor); //thl@SHoP apply scale factor here to match units
+        floats.AddRange(new float[] { (float)scaledVertex.X, (float)scaledVertex.Y, (float)scaledVertex.Z });
 
-        min.X = Math.Min(min.X, vertex.X);
-        max.X = Math.Max(max.X, vertex.X);
+        min.X = Math.Min(min.X, scaledVertex.X);
+        max.X = Math.Max(max.X, scaledVertex.X);
 
-        min.Y = Math.Min(min.Y, vertex.Y);
-        max.Y = Math.Max(max.Y, vertex.Y);
+        min.Y = Math.Min(min.Y, scaledVertex.Y);
+        max.Y = Math.Max(max.Y, scaledVertex.Y);
 
-        min.Z = Math.Min(min.Z, vertex.Z);
-        max.Z = Math.Max(max.Z, vertex.Z);
+        min.Z = Math.Min(min.Z, scaledVertex.Z);
+        max.Z = Math.Max(max.Z, scaledVertex.Z);
       }
 
       IEnumerable<byte> bytesEnumerable = floats.SelectMany(value => BitConverter.GetBytes(value));
