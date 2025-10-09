@@ -116,7 +116,7 @@ namespace glTF_BinExporter
                     glTFLoader.Schema.Node node = new glTFLoader.Schema.Node()
                     {
                         Mesh = meshIndex,
-                        Name = GetObjectName(rhinoObject),
+                        Name = GlTFUtils.SanitizeName(GetObjectName(rhinoObject)), //converting anything non-ASCII to ?
                     };
 
                     int nodeIndex = dummy.Nodes.AddAndReturnIndex(node);
@@ -197,7 +197,7 @@ namespace glTF_BinExporter
                 glTFLoader.Schema.Node node = new glTFLoader.Schema.Node()
                 {
                     Mesh = meshIndex,
-                    Name = GetObjectName(exportData.Object),
+                    Name = GlTFUtils.SanitizeName((GetObjectName(exportData.Object))) //converting anything non-ASCII to ?
                 };
 
                 int nodeIndex = dummy.Nodes.AddAndReturnIndex(node);
@@ -280,7 +280,7 @@ namespace glTF_BinExporter
             {
                 node = new glTFLoader.Schema.Node()
                 {
-                    Name = layer.Name,
+                    Name = GlTFUtils.SanitizeName(layer.Name), //converting anything non-ASCII to ?
                     Children = new int[1] { child },
                 };
 
@@ -597,10 +597,10 @@ namespace glTF_BinExporter
             if (rhinoObject is Rhino.DocObjects.InstanceObject instanceObject)//if a block
             {
                 var blockDefinition = instanceObject.InstanceDefinition;
-                var instanceName = getBlockInstanceName(instanceObject);
+                var instanceName = getBlockInstanceName(instanceObject); 
                 ExtrasSHoP extras = new ExtrasSHoP
                 {
-                    instanceOf = blockDefinition.Name,
+                    instanceOf = GlTFUtils.SanitizeName(blockDefinition.Name), //converting anything non-ASCII to ?
                     instanceId = BlockDefToCount[blockDefinition]
                 };
 
@@ -780,7 +780,7 @@ namespace glTF_BinExporter
 
             Node node = new glTFLoader.Schema.Node()
             {
-                Name = name,
+                Name = GlTFUtils.SanitizeName(name), //converting anything non-ASCII to ?
                 Translation = new float[3] { (float)translationWparent.X, (float)translationWparent.Y, (float)translationWparent.Z },
                 Rotation = new float[4] { (float)quaternion.B, (float)quaternion.C, (float)quaternion.D, (float)quaternion.A },
                 Scale = new float[3] { (float)diag.X, (float)diag.Y, (float)diag.Z}

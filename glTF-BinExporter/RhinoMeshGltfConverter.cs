@@ -39,7 +39,7 @@ namespace glTF_BinExporter
       glTFLoader.Schema.Mesh mesh = new glTFLoader.Schema.Mesh()
       {
         Primitives = primitives.ToArray(),
-        Name = exportData.Object.Name //thl@SHoP
+        Name = GlTFUtils.SanitizeName(exportData.Object.Name )//thl@SHoP //converting anything non-ASCII to ?
       };
 
       //thl@SHoP
