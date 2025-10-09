@@ -550,7 +550,7 @@ namespace glTF_BinExporter
             }
 
             //Remove meshless objects
-            processedObjects.RemoveAll(x => x.Meshes.Length == 0);
+            processedObjects.RemoveAll(x => x.Meshes == null || x.Meshes.Length == 0);
 
             return processedObjects;
         }
