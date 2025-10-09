@@ -81,5 +81,21 @@ namespace glTF_BinExporter
             }
 
         }
+
+        /// <summary>
+        /// Convert any non-ASCII character into question mark(?)
+        /// </summary>
+        /// <param name="name"></param>
+        /// <returns></returns>
+        public static string SanitizeName(string name)
+        {
+            // Create an ASCII encoding.
+            Encoding ascii = Encoding.ASCII;
+            
+            if (!string.IsNullOrWhiteSpace(name)) 
+                return ascii.GetString(ascii.GetBytes(name));
+
+            return string.Empty;
+        }
     }
 }
