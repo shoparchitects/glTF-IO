@@ -243,7 +243,7 @@ namespace glTF_BinExporter
         }
 
         private const string ExportLayersDialogKey = "ExportLayers";
-        public const bool ExportLayersDialogDefault = false;
+        public const bool ExportLayersDialogDefault = true;
 
         public static bool ExportLayers
         {
