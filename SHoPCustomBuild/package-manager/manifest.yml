@@ -1,15 +1,13 @@
 ---
 name: glTF-IO-extension-by-SHoP
-version: 0.1.1
+version: 0.1.5
 authors:
 - Aske Doerge
 - Joshua Kennedy
 - Peter Krattenmacher
 - Ali Tehami
 - Tim Li
-description:
-  Import and export plugins for .gltf and .glb files.
-  Extensions by SHoP include better handling of blocks with instancing, and capturing user text, etc.
+description: Import and export plugins for .gltf and .glb files. Extensions by SHoP include better handling of blocks with instancing, and capturing user text, etc.
 url: https://github.com/shoparchitects/glTF-IO/tree/SHoPCustomExporter
 keywords:
 - glTF
