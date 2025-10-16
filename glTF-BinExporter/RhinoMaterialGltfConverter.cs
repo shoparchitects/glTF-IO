@@ -340,7 +340,7 @@ namespace glTF_BinExporter
             return texture.IsLinear();
         }
 
-        glTFLoader.Schema.TextureInfo CombineBaseColorAndAlphaTexture(RenderTexture baseColorTexture, RenderTexture alphaTexture, bool baseColorDiffuseAlphaForTransparency, Color4f baseColor, bool baseColorLinear, float alpha, out bool hasAlpha)
+        glTFLoader.Schema.TextureInfo CombineBaseColorAndAlphaTexture(RenderTexture baseColorTexture, RenderTexture alphaTexture, bool baseColorDiffuseAlphaForTransparency, Color4f baseColor, bool baseColorLinear, float alpha, out bool hasAlpha, int textureDimension = 512)
         {
             hasAlpha = false;
 
@@ -366,14 +366,14 @@ namespace glTF_BinExporter
             int width = Math.Max(baseColorWidth, alphaWidth);
             int height = Math.Max(baseColorHeight, alphaHeight);
 
-            if(width <= 0)
+            if(width <= 0 || width > textureDimension)
             {
-                width = 1024;
+                width = textureDimension;
             }
 
-            if(height <= 0)
+            if(height <= 0 || height > textureDimension)
             {
-                height = 1024;
+                height = textureDimension;
             }
 
             TextureEvaluator baseColorEvaluator = null;
