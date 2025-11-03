@@ -1,14 +1,18 @@
-﻿using Rhino.Display;
+﻿using glTFLoader.Schema;
+using Rhino;
+using Rhino.Display;
 using Rhino.DocObjects;
 using Rhino.Geometry;
 using Rhino.Render;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Interop;
 
 namespace glTF_BinExporter
 {
@@ -315,6 +319,7 @@ namespace glTF_BinExporter
             }
             else
             {
+                RhinoApp.Write($"Encoding {baseColorDoc.FileName}");
                 gltfMaterial.PbrMetallicRoughness.BaseColorTexture = CombineBaseColorAndAlphaTexture(baseColorTexture, alphaTexture, baseColorDiffuseAlphaForTransparency, baseColor, baseColorLinear, (float)rhinoMaterial.PhysicallyBased.Alpha, out bool hasAlpha);
                 
                 if (hasAlpha)
@@ -340,7 +345,7 @@ namespace glTF_BinExporter
             return texture.IsLinear();
         }
 
-        glTFLoader.Schema.TextureInfo CombineBaseColorAndAlphaTexture(RenderTexture baseColorTexture, RenderTexture alphaTexture, bool baseColorDiffuseAlphaForTransparency, Color4f baseColor, bool baseColorLinear, float alpha, out bool hasAlpha, int textureDimension = 512)
+        glTFLoader.Schema.TextureInfo CombineBaseColorAndAlphaTexture(RenderTexture baseColorTexture, RenderTexture alphaTexture, bool baseColorDiffuseAlphaForTransparency, Color4f baseColor, bool baseColorLinear, float alpha, out bool hasAlpha, int textureDimension = 1024)
         {
             hasAlpha = false;
 
@@ -366,15 +371,29 @@ namespace glTF_BinExporter
             int width = Math.Max(baseColorWidth, alphaWidth);
             int height = Math.Max(baseColorHeight, alphaHeight);
 
-            if(width <= 0 || width > textureDimension)
+            bool cappingWidth = width <= 0 || width > textureDimension;
+            bool cappingHeight = height <= 0 || height > textureDimension;
+
+            if(cappingWidth || cappingHeight)
             {
-                width = textureDimension;
+                int ogWidth = width;
+                int ogHeight = height;
+
+                if (cappingWidth)
+                {
+                    width = textureDimension;
+                }
+
+                if (cappingHeight)
+                {
+                    height = textureDimension;
+                }
+
+                RhinoApp.WriteLine($" from {ogWidth}x{ogHeight} to {width}x{height}");
+
             }
 
-            if(height <= 0 || height > textureDimension)
-            {
-                height = textureDimension;
-            }
+
 
             TextureEvaluator baseColorEvaluator = null;
 
@@ -742,15 +761,46 @@ namespace glTF_BinExporter
 
         private byte[] GetImageBytes(Bitmap bitmap)
         {
+
+            //thl @ SHoP - Need to compress the bitmap to jpg to save space
+            ImageCodecInfo jpgEncoder = JpegCodecInfo; // Helper to get the JPEG encoder
+            EncoderParameters encoderParams = new EncoderParameters(1);
+            encoderParams.Param[0] = new EncoderParameter(System.Drawing.Imaging.Encoder.Quality, 80L); // Set quality to 80
+
             using (MemoryStream imageStream = new MemoryStream(4096))
             {
-                bitmap.Save(imageStream, System.Drawing.Imaging.ImageFormat.Png);
+                bitmap.Save(imageStream, jpgEncoder, encoderParams);//thl @ SHoP
 
                 //Zero pad so its 4 byte aligned
                 long mod = imageStream.Position % 4;
                 imageStream.Write(Constants.Paddings[mod], 0, Constants.Paddings[mod].Length);
 
                 return imageStream.ToArray();
+            }
+        }
+
+        private static ImageCodecInfo GetEncoderInfo(String mimeType)
+        {
+            int j;
+            ImageCodecInfo[] encoders;
+            encoders = ImageCodecInfo.GetImageEncoders();
+            for (j = 0; j < encoders.Length; ++j)
+            {
+                if (encoders[j].MimeType == mimeType)
+                    return encoders[j];
+            }
+            return null;
+        }
+
+        private static ImageCodecInfo _JpegCodecInfo = null;
+        public static ImageCodecInfo JpegCodecInfo
+        {
+            get
+            {
+                if(_JpegCodecInfo == null)
+                    _JpegCodecInfo = GetEncoderInfo("image/jpeg");
+
+                return _JpegCodecInfo;
             }
         }
 
