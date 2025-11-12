@@ -2,6 +2,7 @@ using Rhino.Display;
 using Rhino.FileIO;
 using Rhino.Geometry;
 using Rhino.Geometry.Collections;
+using Rhino.Render;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -31,15 +32,20 @@ namespace glTF_BinExporter
     private List<byte> binaryBuffer = null;
 
     private DracoGeometryInfo currentGeometryInfo = null;
-
     public int AddMesh()
     {
       List<glTFLoader.Schema.MeshPrimitive> primitives = GetPrimitives();
 
+      string name = GlTFUtils.SanitizeName(exportData.Object.Name);//thl@SHoP //converting anything non-ASCII to ?
+      if (string.IsNullOrWhiteSpace(name))
+      {
+          name = $"NNMesh_{RhinoDocGltfConverter.NoNameMeshCount}";
+          RhinoDocGltfConverter.NoNameMeshCount++;
+      }
       glTFLoader.Schema.Mesh mesh = new glTFLoader.Schema.Mesh()
       {
         Primitives = primitives.ToArray(),
-        Name = GlTFUtils.SanitizeName(exportData.Object.Name )//thl@SHoP //converting anything non-ASCII to ?
+        Name = name
       };
 
       //thl@SHoP

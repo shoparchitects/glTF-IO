@@ -22,7 +22,6 @@ namespace glTF_BinExporter
     private bool binary = false;
     private gltfSchemaDummy dummy = null;
     private List<byte> binaryBuffer = null;
-
     public int AddPointCloud()
     {
       Rhino.Geometry.PointCloud pointCloud = rhinoObject.Geometry.Duplicate() as Rhino.Geometry.PointCloud;
@@ -67,10 +66,17 @@ namespace glTF_BinExporter
         primitive.Attributes.Add(Constants.NormalAttributeTag, normalsAccessorIdx);
       }
 
+      string name = GlTFUtils.SanitizeName(rhinoObject.Name);//thl@SHoP //converting anything non-ASCII to ?
+      if (string.IsNullOrWhiteSpace(name))
+      {
+          name = $"NNMesh_{RhinoDocGltfConverter.NoNameMeshCount}";
+          RhinoDocGltfConverter.NoNameMeshCount++;
+      }
+
       glTFLoader.Schema.Mesh mesh = new glTFLoader.Schema.Mesh()
       {
         Primitives = new glTFLoader.Schema.MeshPrimitive[] { primitive },
-        Name = GlTFUtils.SanitizeName(rhinoObject.Name)//thl@SHoP //converting anything non-ASCII to ?
+        Name = name
 
       };
 

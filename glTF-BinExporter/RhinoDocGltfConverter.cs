@@ -27,6 +27,12 @@ namespace glTF_BinExporter
 
     class RhinoDocGltfConverter
     {
+        public static int NoNameLayerCount = 0;
+        public static int NoNameBlockCount = 0;
+        public static int NoNameObjectCount = 0;
+        public static int NoNameMeshCount = 0;
+        public static int NoNameMaterialCount = 0;
+
         public RhinoDocGltfConverter(glTFExportOptions options, bool binary, RhinoDoc doc, IEnumerable<Rhino.DocObjects.RhinoObject> objects, Rhino.Render.LinearWorkflow workflow)
         {
             this.doc = doc;
@@ -34,6 +40,11 @@ namespace glTF_BinExporter
             this.binary = binary;
             this.objects = objects;
             this.workflow = workflow;
+            NoNameLayerCount = 0;
+            NoNameBlockCount = 0;
+            NoNameObjectCount = 0;
+            NoNameMeshCount = 0;
+            NoNameMaterialCount = 0;
         }
 
         public RhinoDocGltfConverter(glTFExportOptions options, bool binary, RhinoDoc doc, Rhino.Render.LinearWorkflow workflow)
@@ -43,6 +54,11 @@ namespace glTF_BinExporter
             this.binary = binary;
             this.objects = doc.Objects;
             this.workflow = null;
+            NoNameLayerCount = 0;
+            NoNameBlockCount = 0;
+            NoNameObjectCount = 0;
+            NoNameMeshCount = 0;
+            NoNameMaterialCount = 0;
         }
 
         private RhinoDoc doc = null;
@@ -62,6 +78,8 @@ namespace glTF_BinExporter
         private Dictionary<int, glTFLoader.Schema.Node> layers = new Dictionary<int, glTFLoader.Schema.Node>();
 
         private Rhino.Render.RenderMaterial defaultMaterial = null;
+
+
         private Rhino.Render.RenderMaterial DefaultMaterial
         {
             get
@@ -113,10 +131,17 @@ namespace glTF_BinExporter
 
                 if (meshIndex != -1)
                 {
+                    string name = GlTFUtils.SanitizeName(GetObjectName(rhinoObject)); //converting anything non-ASCII to ?
+                    if(string.IsNullOrWhiteSpace(name))
+                    {
+                        name = $"NNObj_{NoNameObjectCount}";
+                        NoNameObjectCount++;
+                    }
+
                     glTFLoader.Schema.Node node = new glTFLoader.Schema.Node()
                     {
                         Mesh = meshIndex,
-                        Name = GlTFUtils.SanitizeName(GetObjectName(rhinoObject)), //converting anything non-ASCII to ?
+                        Name = name
                     };
 
                     int nodeIndex = dummy.Nodes.AddAndReturnIndex(node);
@@ -194,10 +219,16 @@ namespace glTF_BinExporter
                     }
                 }
 
+                string name = GlTFUtils.SanitizeName((GetObjectName(exportData.Object))); //converting anything non-ASCII to ?
+                if (string.IsNullOrWhiteSpace(name))
+                {
+                    name = $"NNObj_{NoNameObjectCount}";
+                    NoNameObjectCount++;
+                }
                 glTFLoader.Schema.Node node = new glTFLoader.Schema.Node()
                 {
                     Mesh = meshIndex,
-                    Name = GlTFUtils.SanitizeName((GetObjectName(exportData.Object))) //converting anything non-ASCII to ?
+                    Name = name
                 };
 
                 int nodeIndex = dummy.Nodes.AddAndReturnIndex(node);
@@ -278,9 +309,16 @@ namespace glTF_BinExporter
             }
             else
             {
+                string name = GlTFUtils.SanitizeName(layer.Name); //converting anything non-ASCII to ?
+                if (string.IsNullOrWhiteSpace(name))
+                {
+                    name = $"NNLayer_{NoNameLayerCount}";
+                    NoNameLayerCount++;
+                }
+
                 node = new glTFLoader.Schema.Node()
                 {
-                    Name = GlTFUtils.SanitizeName(layer.Name), //converting anything non-ASCII to ?
+                    Name = name,
                     Children = new int[1] { child },
                 };
 
@@ -597,10 +635,11 @@ namespace glTF_BinExporter
             if (rhinoObject is Rhino.DocObjects.InstanceObject instanceObject)//if a block
             {
                 var blockDefinition = instanceObject.InstanceDefinition;
-                var instanceName = getBlockInstanceName(instanceObject); 
+                var instanceName = getBlockInstanceName(instanceObject);//This method sanitizes the name, then create an record of the instance and the definition mapping including block definition's name (also cleans the name if needed)
+                var blockDefName = BlockDefToName[blockDefinition];
                 ExtrasSHoP extras = new ExtrasSHoP
                 {
-                    instanceOf = GlTFUtils.SanitizeName(blockDefinition.Name), //converting anything non-ASCII to ?
+                    instanceOf = blockDefName,
                     instanceId = BlockDefToCount[blockDefinition]
                 };
 
@@ -680,6 +719,12 @@ namespace glTF_BinExporter
             
         }
 
+        /// <summary>
+        /// This method not only gets the block instance name but also tracks the count of each block definition instance,
+        /// It also creates a unique name for unnamed/ill-named block definition
+        /// </summary>
+        /// <param name="instanceObj"></param>
+        /// <returns></returns>
         string getBlockInstanceName(Rhino.DocObjects.InstanceObject instanceObj)
         {
             var name = GetObjectName(instanceObj);
@@ -687,11 +732,17 @@ namespace glTF_BinExporter
             if (!BlockDefToCount.ContainsKey(instanceObj.InstanceDefinition))
                 BlockDefToCount.Add(instanceObj.InstanceDefinition, -1);
 
+            if (!BlockDefToName.ContainsKey(instanceObj.InstanceDefinition))
+                BlockDefToName.Add(instanceObj.InstanceDefinition, GlTFUtils.SanitizeName(instanceObj.InstanceDefinition.Name));
+
             BlockDefToCount[instanceObj.InstanceDefinition]++;
+
+            if (string.IsNullOrWhiteSpace(BlockDefToName[instanceObj.InstanceDefinition]))
+                BlockDefToName[instanceObj.InstanceDefinition] = $"NNBlock_{NoNameBlockCount++}";
 
             if (string.IsNullOrWhiteSpace(name))
             {
-                return $"{instanceObj.InstanceDefinition.Name}.{BlockDefToCount[instanceObj.InstanceDefinition]}";
+                return $"{BlockDefToName[instanceObj.InstanceDefinition]}.{BlockDefToCount[instanceObj.InstanceDefinition]}";
             }
             return name;
         }
@@ -780,7 +831,7 @@ namespace glTF_BinExporter
 
             Node node = new glTFLoader.Schema.Node()
             {
-                Name = GlTFUtils.SanitizeName(name), //converting anything non-ASCII to ?
+                Name = name,
                 Translation = new float[3] { (float)translationWparent.X, (float)translationWparent.Y, (float)translationWparent.Z },
                 Rotation = new float[4] { (float)quaternion.B, (float)quaternion.C, (float)quaternion.D, (float)quaternion.A },
                 Scale = new float[3] { (float)diag.X, (float)diag.Y, (float)diag.Z}
@@ -873,6 +924,8 @@ namespace glTF_BinExporter
 
         //Block Instance Counter
         Dictionary<Rhino.DocObjects.InstanceDefinition, int> BlockDefToCount = new Dictionary<Rhino.DocObjects.InstanceDefinition, int>();
+        Dictionary<Rhino.DocObjects.InstanceDefinition, string> BlockDefToName = new Dictionary<Rhino.DocObjects.InstanceDefinition, string>();
+
 
         //Embedded Meshes (used to distinguish from root level meshes)
         List<Rhino.DocObjects.RhinoObject> EmbeddedObjects = new List<Rhino.DocObjects.RhinoObject>();

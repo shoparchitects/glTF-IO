@@ -48,10 +48,17 @@ namespace glTF_BinExporter
 
         public int AddMaterial()
         {
+            string name = GlTFUtils.SanitizeName(renderMaterial.Name);
+            if(string.IsNullOrWhiteSpace(name))
+            {
+                name = $"NNMat_{RhinoDocGltfConverter.NoNameMaterialCount}";
+                RhinoDocGltfConverter.NoNameMaterialCount++;
+            }
+
             // Prep
             glTFLoader.Schema.Material material = new glTFLoader.Schema.Material()
             {
-                Name = GlTFUtils.SanitizeName(renderMaterial.Name), //thl @ SHoP
+                Name = name, //thl @ SHoP
                 PbrMetallicRoughness = new glTFLoader.Schema.MaterialPbrMetallicRoughness(),
             };
 
@@ -81,13 +88,22 @@ namespace glTF_BinExporter
 
             if (hasMetalTexture || hasRoughnessTexture)
             {
-                material.PbrMetallicRoughness.MetallicRoughnessTexture = AddMetallicRoughnessTexture(rhinoMaterial);
+                try
+                {
+                    material.PbrMetallicRoughness.MetallicRoughnessTexture = AddMetallicRoughnessTexture(rhinoMaterial);
 
-                float metallic = metallicTexture == null ? (float)pbr.Metallic : GetTextureWeight(metallicTexture);
-                float roughness = roughnessTexture == null ? (float)pbr.Roughness : GetTextureWeight(roughnessTexture);
+                    float metallic = metallicTexture == null ? (float)pbr.Metallic : GetTextureWeight(metallicTexture);
+                    float roughness = roughnessTexture == null ? (float)pbr.Roughness : GetTextureWeight(roughnessTexture);
 
-                material.PbrMetallicRoughness.MetallicFactor = metallic;
-                material.PbrMetallicRoughness.RoughnessFactor = roughness;
+                    material.PbrMetallicRoughness.MetallicFactor = metallic;
+                    material.PbrMetallicRoughness.RoughnessFactor = roughness;
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                    RhinoApp.WriteLine("Error Grabbing Roughness... Skipping");
+                }
+                
             }
             else
             {
@@ -97,42 +113,75 @@ namespace glTF_BinExporter
 
             if (normalTexture != null && normalTexture.Enabled)
             {
-                material.NormalTexture = AddTextureNormal(normalTexture);
+                try
+                {
+                    material.NormalTexture = AddTextureNormal(normalTexture);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                    RhinoApp.WriteLine("Error Grabbing Normal Map... Skipping");
+                }
             }
 
             if (occlusionTexture != null && occlusionTexture.Enabled)
             {
-                material.OcclusionTexture = AddTextureOcclusion(occlusionTexture);
+                try
+                {
+                    material.OcclusionTexture = AddTextureOcclusion(occlusionTexture);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                    RhinoApp.WriteLine("Error Grabbing Occlusion Map... Skipping");
+                }
             }
 
             if (emissiveTexture != null && emissiveTexture.Enabled)
             {
-                material.EmissiveTexture = AddTexture(emissiveTexture.FileReference.FullPath);
-
-                float emissionMultiplier = 1.0f;
-
-                var param = rhinoMaterial.RenderMaterial.GetParameter("emission-multiplier");
-
-                if (param != null)
+                try
                 {
-                    emissionMultiplier = (float)Convert.ToDouble(param);
+                    material.EmissiveTexture = AddTexture(emissiveTexture.FileReference.FullPath);
+
+                    float emissionMultiplier = 1.0f;
+
+                    var param = rhinoMaterial.RenderMaterial.GetParameter("emission-multiplier");
+
+                    if (param != null)
+                    {
+                        emissionMultiplier = (float)Convert.ToDouble(param);
+                    }
+
+                    material.EmissiveFactor = new float[]
+                    {
+                    emissionMultiplier,
+                    emissionMultiplier,
+                    emissionMultiplier,
+                    };
                 }
-
-                material.EmissiveFactor = new float[]
+                catch (Exception e)
                 {
-                    emissionMultiplier,
-                    emissionMultiplier,
-                    emissionMultiplier,
-                };
+                    Console.WriteLine(e.Message);
+                    RhinoApp.WriteLine("Error Grabbing Emissive Map... Skipping");
+                }
             }
             else
             {
-                material.EmissiveFactor = new float[]
+                try
                 {
+                    material.EmissiveFactor = new float[]
+                    {
                     rhinoMaterial.PhysicallyBased.Emission.R,
                     rhinoMaterial.PhysicallyBased.Emission.G,
                     rhinoMaterial.PhysicallyBased.Emission.B,
-                };
+                    };
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                    RhinoApp.WriteLine("Error Setting Emissive Factors... Skipping");
+                }
+
             }
 
             //Extensions
@@ -147,8 +196,16 @@ namespace glTF_BinExporter
             {
                 //Transmission texture is stored in an images R channel
                 //https://github.com/KhronosGroup/glTF/blob/master/extensions/2.0/Khronos/KHR_materials_transmission/README.md#properties
-                transmission.TransmissionTexture = GetSingleChannelTexture(opacityTexture, RgbaChannel.Red, true);
-                transmission.TransmissionFactor = GetTextureWeight(opacityTexture);
+                try
+                {
+                    transmission.TransmissionTexture = GetSingleChannelTexture(opacityTexture, RgbaChannel.Red, true);
+                    transmission.TransmissionFactor = GetTextureWeight(opacityTexture);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                    RhinoApp.WriteLine("Error Grabbing Transmission... Skipping");
+                }
             }
             else
             {
@@ -163,8 +220,17 @@ namespace glTF_BinExporter
 
             if(clearcoatTexture != null && clearcoatTexture.Enabled)
             {
-                clearcoat.ClearcoatTexture = AddTexture(clearcoatTexture.FileReference.FullPath);
-                clearcoat.ClearcoatFactor = GetTextureWeight(clearcoatTexture);
+                try
+                {
+                    clearcoat.ClearcoatTexture = AddTexture(clearcoatTexture.FileReference.FullPath);
+                    clearcoat.ClearcoatFactor = GetTextureWeight(clearcoatTexture);
+
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                    RhinoApp.WriteLine("Error Grabbing Clearcoat... Skipping");
+                }
             }
             else
             {
@@ -173,8 +239,16 @@ namespace glTF_BinExporter
 
             if(clearcoatRoughessTexture != null && clearcoatRoughessTexture.Enabled)
             {
-                clearcoat.ClearcoatRoughnessTexture = AddTexture(clearcoatRoughessTexture.FileReference.FullPath);
-                clearcoat.ClearcoatRoughnessFactor = GetTextureWeight(clearcoatRoughessTexture);
+                try
+                {
+                    clearcoat.ClearcoatRoughnessTexture = AddTexture(clearcoatRoughessTexture.FileReference.FullPath);
+                    clearcoat.ClearcoatRoughnessFactor = GetTextureWeight(clearcoatRoughessTexture);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                    RhinoApp.WriteLine("Error Grabbing Clearcoat Roughness... Skipping");
+                }
             }
             else
             {
@@ -183,7 +257,15 @@ namespace glTF_BinExporter
 
             if(clearcoatNormalTexture != null && clearcoatNormalTexture.Enabled)
             {
-                clearcoat.ClearcoatNormalTexture = AddTextureNormal(clearcoatNormalTexture);
+                try
+                {
+                    clearcoat.ClearcoatNormalTexture = AddTextureNormal(clearcoatNormalTexture);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                    RhinoApp.WriteLine("Error Grabbing Clearcoat Normal... Skipping");
+                }
             }
 
             material.Extensions.Add(glTFExtensions.KHR_materials_clearcoat.Tag, clearcoat);
@@ -203,9 +285,17 @@ namespace glTF_BinExporter
 
             if(specularTexture != null && specularTexture.Enabled)
             {
-                //Specular is stored in the textures alpha channel
-                specular.SpecularTexture = GetSingleChannelTexture(specularTexture, RgbaChannel.Alpha, false);
-                specular.SpecularFactor = GetTextureWeight(specularTexture);
+                try
+                {
+                    //Specular is stored in the textures alpha channel
+                    specular.SpecularTexture = GetSingleChannelTexture(specularTexture, RgbaChannel.Alpha, false);
+                    specular.SpecularFactor = GetTextureWeight(specularTexture);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                    RhinoApp.WriteLine("Error Grabbing Specular Texture... Skipping");
+                }
             }
             else
             {
@@ -300,6 +390,49 @@ namespace glTF_BinExporter
 
             if (!hasBaseColorTexture && !hasAlphaTexture)
             {
+                setBaseColor();
+            }
+            else
+            {
+                RhinoApp.Write($"Encoding {baseColorDoc.FileName}");
+                Console.Write($"Encoding {baseColorDoc.FileName}");
+
+                try
+                {
+                    gltfMaterial.PbrMetallicRoughness.BaseColorTexture = CombineBaseColorAndAlphaTexture(baseColorTexture, alphaTexture, baseColorDiffuseAlphaForTransparency, baseColor, baseColorLinear, (float)rhinoMaterial.PhysicallyBased.Alpha, out bool hasAlpha);
+
+                    if(gltfMaterial.PbrMetallicRoughness.BaseColorTexture == null)
+                    {
+                        setBaseColor();
+
+                        RhinoApp.WriteLine();
+                        RhinoApp.WriteLine("Skipping this material...");
+
+                        return;
+                    }
+
+                    if (hasAlpha)
+                    {
+                        gltfMaterial.AlphaMode = glTFLoader.Schema.Material.AlphaModeEnum.BLEND;
+                    }
+                    else
+                    {
+                        gltfMaterial.AlphaMode = glTFLoader.Schema.Material.AlphaModeEnum.OPAQUE;
+                    }
+                }
+                catch (Exception e)
+                {
+                    RhinoApp.WriteLine();
+                    Console.WriteLine();
+                    Console.WriteLine(e.Message);
+                    RhinoApp.WriteLine("Skipping this material...");
+                    Console.WriteLine("Skipping this material...");
+                }
+                
+            }
+
+            void setBaseColor()
+            {
                 gltfMaterial.PbrMetallicRoughness.BaseColorFactor = new float[]
                 {
                     baseColor.R,
@@ -308,27 +441,13 @@ namespace glTF_BinExporter
                     (float)rhinoMaterial.PhysicallyBased.Alpha,
                 };
 
-                if(rhinoMaterial.PhysicallyBased.Alpha == 1.0)
+                if (rhinoMaterial.PhysicallyBased.Alpha == 1.0)
                 {
                     gltfMaterial.AlphaMode = glTFLoader.Schema.Material.AlphaModeEnum.OPAQUE;
                 }
                 else
                 {
                     gltfMaterial.AlphaMode = glTFLoader.Schema.Material.AlphaModeEnum.BLEND;
-                }
-            }
-            else
-            {
-                RhinoApp.Write($"Encoding {baseColorDoc.FileName}");
-                gltfMaterial.PbrMetallicRoughness.BaseColorTexture = CombineBaseColorAndAlphaTexture(baseColorTexture, alphaTexture, baseColorDiffuseAlphaForTransparency, baseColor, baseColorLinear, (float)rhinoMaterial.PhysicallyBased.Alpha, out bool hasAlpha);
-                
-                if (hasAlpha)
-                {
-                    gltfMaterial.AlphaMode = glTFLoader.Schema.Material.AlphaModeEnum.BLEND;
-                }
-                else
-                {
-                    gltfMaterial.AlphaMode = glTFLoader.Schema.Material.AlphaModeEnum.OPAQUE;
                 }
             }
         }
@@ -374,7 +493,15 @@ namespace glTF_BinExporter
             bool cappingWidth = width <= 0 || width > textureDimension;
             bool cappingHeight = height <= 0 || height > textureDimension;
 
-            if(cappingWidth || cappingHeight)
+            if(width == 0 || height == 0)
+            {
+                RhinoApp.WriteLine($" - Invalid width or height - skipping this material");
+                Console.WriteLine($" - Invalid width or height - skipping this material");
+
+                return null;
+            }
+
+            if (cappingWidth || cappingHeight)
             {
                 int ogWidth = width;
                 int ogHeight = height;
@@ -390,6 +517,14 @@ namespace glTF_BinExporter
                 }
 
                 RhinoApp.WriteLine($" from {ogWidth}x{ogHeight} to {width}x{height}");
+                Console.WriteLine($" from {ogWidth}x{ogHeight} to {width}x{height}");
+
+
+            }
+            else
+            {
+                RhinoApp.WriteLine($" staying {width}x{height}");
+                Console.WriteLine($" staying {width}x{height}");
 
             }
 
