@@ -616,7 +616,7 @@ namespace glTF_BinExporter
         private glTFLoader.Schema.Image GetImageFromFileText(string fileName)
         {
             byte[] imageBytes = GetImageBytesFromFile(fileName);
-
+            Bitmap bitmap = new Bitmap(fileName);
             var textureBuffer = new glTFLoader.Schema.Buffer()
             {
                 Uri = Constants.TextBufferHeader + Convert.ToBase64String(imageBytes),
@@ -633,10 +633,17 @@ namespace glTF_BinExporter
             };
             int textureBufferViewIdx = dummy.BufferViews.AddAndReturnIndex(textureBufferView);
 
+            //thl @ SHoP
+            var mimeType_Raw = bitmap.RawFormat;
+            var mimeType_Encoded = glTFLoader.Schema.Image.MimeTypeEnum.image_jpeg;//defaulting to jpg
+
+            if (mimeType_Raw.Equals(ImageFormat.Png))
+                mimeType_Encoded = glTFLoader.Schema.Image.MimeTypeEnum.image_png;
+
             return new glTFLoader.Schema.Image()
             {
                 BufferView = textureBufferViewIdx,
-                MimeType = glTFLoader.Schema.Image.MimeTypeEnum.image_png,
+                MimeType = mimeType_Encoded,
             };
         }
 
@@ -666,10 +673,18 @@ namespace glTF_BinExporter
             };
             int textureBufferViewIdx = dummy.BufferViews.AddAndReturnIndex(textureBufferView);
 
+            //thl @ SHoP
+            Bitmap bitmap = new Bitmap(fileName);
+            var mimeType_Raw = bitmap.RawFormat;
+            var mimeType_Encoded = glTFLoader.Schema.Image.MimeTypeEnum.image_jpeg;//defaulting to jpg
+
+            if (mimeType_Raw.Equals(ImageFormat.Png))
+                mimeType_Encoded = glTFLoader.Schema.Image.MimeTypeEnum.image_png;
+
             return new glTFLoader.Schema.Image()
             {
                 BufferView = textureBufferViewIdx,
-                MimeType = glTFLoader.Schema.Image.MimeTypeEnum.image_png,
+                MimeType = mimeType_Encoded,
             };
         }
 
@@ -865,10 +880,18 @@ namespace glTF_BinExporter
             };
             int textureBufferViewIdx = dummy.BufferViews.AddAndReturnIndex(textureBufferView);
 
+            //thl @ SHoP
+            var mimeType_Raw = bitmap.RawFormat;
+            var mimeType_Encoded = glTFLoader.Schema.Image.MimeTypeEnum.image_jpeg;//defaulting to jpg
+
+            if (mimeType_Raw.Equals(ImageFormat.Png))
+                mimeType_Encoded = glTFLoader.Schema.Image.MimeTypeEnum.image_png;
+
+
             return new glTFLoader.Schema.Image()
             {
                 BufferView = textureBufferViewIdx,
-                MimeType = glTFLoader.Schema.Image.MimeTypeEnum.image_png,
+                MimeType = mimeType_Encoded,
             };
         }
 
@@ -887,10 +910,17 @@ namespace glTF_BinExporter
             };
             int textureBufferViewIdx = dummy.BufferViews.AddAndReturnIndex(textureBufferView);
 
+            //thl @ SHoP
+            var mimeType_Raw = bitmap.RawFormat;
+            var mimeType_Encoded = glTFLoader.Schema.Image.MimeTypeEnum.image_jpeg;//defaulting to jpg
+
+            if (mimeType_Raw.Equals(ImageFormat.Png))
+                mimeType_Encoded = glTFLoader.Schema.Image.MimeTypeEnum.image_png;
+
             return new glTFLoader.Schema.Image()
             {
                 BufferView = textureBufferViewIdx,
-                MimeType = glTFLoader.Schema.Image.MimeTypeEnum.image_png,
+                MimeType = mimeType_Encoded,
             };
         }
 
@@ -898,13 +928,16 @@ namespace glTF_BinExporter
         {
 
             //thl @ SHoP - Need to compress the bitmap to jpg to save space
-            ImageCodecInfo jpgEncoder = JpegCodecInfo; // Helper to get the JPEG encoder
+            ImageCodecInfo bitmapEncoder = JpegCodecInfo; // Helper to get the JPEG encoder
+            if(bitmap.RawFormat.Equals(ImageFormat.Png))
+                bitmapEncoder = PngCodecInfo;
+
             EncoderParameters encoderParams = new EncoderParameters(1);
             encoderParams.Param[0] = new EncoderParameter(System.Drawing.Imaging.Encoder.Quality, 80L); // Set quality to 80
 
             using (MemoryStream imageStream = new MemoryStream(4096))
             {
-                bitmap.Save(imageStream, jpgEncoder, encoderParams);//thl @ SHoP
+                bitmap.Save(imageStream, bitmapEncoder, encoderParams);//thl @ SHoP
 
                 //Zero pad so its 4 byte aligned
                 long mod = imageStream.Position % 4;
@@ -936,6 +969,18 @@ namespace glTF_BinExporter
                     _JpegCodecInfo = GetEncoderInfo("image/jpeg");
 
                 return _JpegCodecInfo;
+            }
+        }
+
+        private static ImageCodecInfo _PngCodecInfo = null;
+        public static ImageCodecInfo PngCodecInfo
+        {
+            get
+            {
+                if (_PngCodecInfo == null)
+                    _PngCodecInfo = GetEncoderInfo("image/png");
+
+                return _PngCodecInfo;
             }
         }
 
