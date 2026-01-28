@@ -576,10 +576,14 @@ namespace glTF_BinExporter
 
                     float evaluatedAlpha = (float)alpha;
 
-                    if(hasAlphaTexture)
+                    if (hasAlphaTexture)
                     {
                         Color4f alphaColor = alphaTextureEvaluator.GetColor(uvw, Vector3d.Zero, Vector3d.Zero);
                         evaluatedAlpha = alphaColor.L;
+                    }
+                    else if (baseColorOut.A != 1.0f) //thl @ SHoP addressing texture with alpha values
+                    {
+                        evaluatedAlpha = baseColorOut.A;
                     }
 
                     float alphaFinal = baseColor.A * evaluatedAlpha;
