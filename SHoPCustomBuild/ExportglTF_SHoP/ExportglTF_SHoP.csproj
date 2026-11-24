@@ -43,8 +43,7 @@
   
   <ItemGroup>
     <PackageReference Include="glTF2Loader" Version="1.1.4-alpha" />
-    <PackageReference Condition=" '$(RhinoVersion)'=='8' " Include="RhinoCommon" Version="8.23.25251.13001" IncludeAssets="compile;build" />
-    <PackageReference Condition=" '$(RhinoVersion)'=='7' " Include="RhinoCommon" Version="7.37.24107.15001" IncludeAssets="compile;build" />
+    <PackageReference Include="RhinoCommon" Version="9.0.26300.9401" IncludeAssets="compile;build" />
   </ItemGroup>
   
   <ItemGroup>
